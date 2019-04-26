@@ -66,6 +66,70 @@
 
 #include <omp.h>
 
+// ------------------ temporary --------------------
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#define gettid() syscall(SYS_gettid)
+#include <execinfo.h>
+
+#include <csignal>
+#include <iostream>
+#include <fstream>
+
+#include <boost/thread.hpp>
+
+namespace
+{
+pid_t g_main_tid;
+void (*g_default_handler)(int signal);
+boost::thread g_memory_checker_thread;
+
+void signalHandler(int signal)
+{
+  int nptrs;
+  const size_t depth = 100;
+  void* buffer[depth];
+
+  nptrs = backtrace(buffer, depth);
+  backtrace_symbols_fd(buffer, nptrs, STDERR_FILENO);
+
+  if (g_default_handler != nullptr)
+    g_default_handler(signal);
+
+  exit(1);
+}
+void memoryUsageCheckThread()
+{
+  while (true)
+  {
+    int64_t rss;
+    std::string ignore;
+
+    std::ifstream ifs("/proc/self/stat", std::ios_base::in);
+    ifs >>
+        ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >>
+        ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >>
+        ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> ignore >> rss;
+    rss *= sysconf(_SC_PAGE_SIZE);
+    if (rss > int64_t(4) * 1024 * 1024 * 1024)
+    {
+      std::cerr << "Memory exhausted, killing planner_3d!!!!" << std::endl;
+      if (g_main_tid != 0)
+        kill(g_main_tid, SIGABRT);
+      break;
+    }
+    usleep(1000000);
+  }
+}
+void setupMemoryChecker()
+{
+  g_default_handler = std::signal(SIGABRT, signalHandler);
+  g_memory_checker_thread = boost::thread(memoryUsageCheckThread);
+}
+}  // namespace
+// ------------------ /temporary --------------------
+
 class Planner3dNode
 {
 public:
@@ -1298,8 +1362,20 @@ public:
     ros::Rate wait(freq_);
     ROS_DEBUG("Initialized");
 
+    g_main_tid = gettid();
+    std::cerr << "planner_3d: main loop tid is " << g_main_tid << std::endl;
+
+    std::vector<char*> pts;
     while (ros::ok())
     {
+#if 0
+      // artificial memory leak
+      char* unused = reinterpret_cast<char*>(malloc(100 * 1024 * 1024));
+      for (size_t i = 0; i < 100 * 1024 * 1024; i += 1024)
+        unused[i] = 128;
+      pts.push_back(unused);
+#endif
+
       wait.sleep();
       ros::spinOnce();
 
@@ -1889,6 +1965,9 @@ protected:
 int main(int argc, char* argv[])
 {
   ros::init(argc, argv, "planner_3d");
+
+  std::cerr << "planner_3d: main thread tid is " << gettid() << std::endl;
+  setupMemoryChecker();
 
   Planner3dNode jy;
   jy.spin();
