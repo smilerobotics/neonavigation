@@ -66,10 +66,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops -finline-functions ${Open
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 #set(CMAKE_LD_FLAGS "${CMAKE_CXX_FLAGS} -pg")
 
-include_directories(${catkin_INCLUDE_DIRS} include)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_executable(planner_3d src/planner_3d.cpp)
-target_link_libraries(planner_3d ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(planner_3d ${catkin_LIBRARIES} ${Boost_LIBRARIES} dl)
 add_dependencies(planner_3d ${catkin_EXPORTED_TARGETS})
 
 add_executable(planner_2dof_serial_joints src/planner_2dof_serial_joints.cpp)
@@ -89,9 +89,9 @@ if(CATKIN_ENABLE_TESTING)
   find_package(rostest REQUIRED)
   find_package(rosunit REQUIRED)
   add_subdirectory(test)
-  find_package(roslint REQUIRED)
-  roslint_cpp()
-  roslint_add_test()
+  #find_package(roslint REQUIRED)
+  #roslint_cpp()
+  #roslint_add_test()
 endif()
 
 install(TARGETS

@@ -71,13 +71,13 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #define gettid() syscall(SYS_gettid)
-#include <execinfo.h>
 
 #include <csignal>
 #include <iostream>
 #include <fstream>
 
 #include <boost/thread.hpp>
+#include <boost/stacktrace.hpp>
 
 pid_t g_main_tid;
 // ------------------ /temporary --------------------
@@ -1929,12 +1929,7 @@ Planner3dNode* g_node_ptr = nullptr;
 
 void signalHandler(int signal)
 {
-  int nptrs;
-  const size_t depth = 100;
-  void* buffer[depth];
-
-  nptrs = backtrace(buffer, depth);
-  backtrace_symbols_fd(buffer, nptrs, STDERR_FILENO);
+  std::cerr << boost::stacktrace::stacktrace();
 
   if (g_default_handler != nullptr)
     g_default_handler(signal);
