@@ -48,6 +48,7 @@ private:
   ros::Publisher pub_int_;
   double linear_vel_;
   double angular_vel_;
+  double side_vel_;
   double timeout_;
   double linear_high_speed_ratio_;
   double angular_high_speed_ratio_;
@@ -55,6 +56,7 @@ private:
   int angular_axis_;
   int linear_axis2_;
   int angular_axis2_;
+  int side_axis_;
   int interrupt_button_;
   int high_speed_button_;
   ros::Time last_joy_msg_;
@@ -83,6 +85,7 @@ private:
 
     float lin(0.0f);
     float ang(0.0f);
+    float lin_side(0.0f);
     if (static_cast<size_t>(linear_axis_) < msg->axes.size())
       lin = msg->axes[linear_axis_];
     else
@@ -93,7 +96,6 @@ private:
     else
       ROS_ERROR("Out of range: number of axis (%lu) must be greater than angular_axis (%d).",
                 msg->axes.size(), angular_axis_);
-
     if (linear_axis2_ >= 0)
     {
       if (static_cast<size_t>(linear_axis2_) < msg->axes.size())
@@ -116,6 +118,16 @@ private:
         ROS_ERROR("Out of range: number of axis (%lu) must be greater than angular_axis2 (%d).",
                   msg->axes.size(), angular_axis2_);
     }
+    if (side_axis_ >= 0)
+    {
+      if (static_cast<size_t>(side_axis_) < msg->axes.size())
+      {
+        lin_side = msg->axes[side_axis_];
+      }
+      else
+        ROS_ERROR("Out of range: number of axis (%lu) must be greater than side_axis (%d).",
+                  msg->axes.size(), side_axis_);
+    }
 
     if (high_speed_button_ >= 0)
     {
@@ -134,7 +146,8 @@ private:
 
     geometry_msgs::Twist cmd_vel;
     cmd_vel.linear.x = lin * linear_vel_;
-    cmd_vel.linear.y = cmd_vel.linear.z = 0.0;
+    cmd_vel.linear.y = lin_side * side_vel_;
+    cmd_vel.linear.z = 0.0;
     cmd_vel.angular.z = ang * angular_vel_;
     cmd_vel.angular.x = cmd_vel.angular.y = 0.0;
     pub_twist_.publish(cmd_vel);
@@ -182,6 +195,9 @@ public:
     pnh_.param("linear_high_speed_ratio", linear_high_speed_ratio_, 1.3);
     pnh_.param("angular_high_speed_ratio", angular_high_speed_ratio_, 1.1);
     pnh_.param("timeout", timeout_, 0.5);
+    pnh_.param("side_vel", side_vel_, 0.0);
+    pnh_.param("side_axis", side_axis_, -1);
+
     last_joy_msg_ = ros::Time(0);
 
     if (interrupt_button_ < 0)
