@@ -449,7 +449,7 @@ protected:
       if (t != 0)
       {
         d_col += linear_vel * dt_;
-        d_escape_remain -= std::abs(linear_vel) * dt_;
+        d_escape_remain -= linear_vel * dt_;
         yaw_col += twist_.angular.z * dt_;
         yaw_escape_remain -= std::abs(twist_.angular.z) * dt_;
         move = move * motion;
@@ -458,8 +458,6 @@ protected:
 
       pcl::PointXYZ center;
       center = pcl::transformPoint(center, move_inv);
-      ROS_INFO("t: %f Center: %f, %f", t, center.x, center.y);
-
       std::vector<int> indices;
       std::vector<float> dist;
       const int num = kdtree.radiusSearch(center, footprint_radius_, indices, dist);
@@ -535,7 +533,7 @@ protected:
 
     d_col = std::max<float>(
         0.0,
-        std::abs(d_col) - d_margin_ + acc_dtsq[0] -
+        d_col - d_margin_ + acc_dtsq[0] -
             std::sqrt(std::pow(acc_dtsq[0], 2) + 2 * acc_dtsq[0] * std::abs(d_col)));
     yaw_col = std::max<float>(
         0.0,
@@ -543,7 +541,7 @@ protected:
             std::sqrt(std::pow(acc_dtsq[1], 2) + 2 * acc_dtsq[1] * std::abs(yaw_col)));
 
     float d_r =
-        std::sqrt(std::abs(2 * acc_[0] * d_col)) / std::abs(linear_vel);
+        std::sqrt(std::abs(2 * acc_[0] * d_col)) / linear_vel;
     float yaw_r =
         std::sqrt(std::abs(2 * acc_[1] * yaw_col)) / std::abs(twist_.angular.z);
     if (!std::isfinite(d_r))
@@ -563,7 +561,7 @@ protected:
       out.linear.x *= r_lim_;
       out.linear.y *= r_lim_;
       out.angular.z *= r_lim_;
-      ROS_INFO_THROTTLE(
+      ROS_DEBUG_THROTTLE(
           1.0, "safety_limiter: (%0.2f, %0.2f, %0.2f)->(%0.2f, %0.2f %0.2f)",
           in.linear.x, in.linear.y, in.angular.z,
           out.linear.x, out.linear.y, out.angular.z);
