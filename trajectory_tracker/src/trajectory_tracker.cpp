@@ -708,6 +708,7 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(
       dist_from_path = -(lpath[i_nearest].pos_ - origin).norm();
     if (std::abs(dist_from_path) > d_stop_)
     {
+      ROS_INFO("FAR_FROM_PATH: dist: %f. thr: %f", dist_from_path, d_stop_);
       result.distance_remains = distance_remains;
       result.distance_remains_raw = distance_remains_raw;
       result.angle_remains = angle_remains;
