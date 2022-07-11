@@ -90,14 +90,16 @@ private:
   double look_forward_;
   double curv_forward_;
   double k_[3];
+  double k_parallel_[3];
   double gain_at_vel_;
   double d_lim_;
   double d_stop_;
-  double vel_[2];
-  double acc_[2];
-  double acc_toc_[2];
+  double vel_[3];
+  double acc_[3];
+  double acc_toc_[3];
   trajectory_tracker::VelAccLimitter v_lim_;
   trajectory_tracker::VelAccLimitter w_lim_;
+  trajectory_tracker::VelAccLimitter v_parallel_lim_;
   double rotate_ang_;
   double goal_tolerance_dist_;
   double goal_tolerance_ang_;
@@ -267,6 +269,12 @@ void TrackerNode::cbParameter(const TrajectoryTrackerConfig& config, const uint3
   k_avel_rotation_ = config.k_avel_rotation;
   goal_tolerance_lin_vel_ = config.goal_tolerance_lin_vel;
   goal_tolerance_ang_vel_ = config.goal_tolerance_ang_vel;
+  k_parallel_[0] = config.k_dist_parallel;
+  k_parallel_[1] = config.k_ang_parallel;
+  k_parallel_[2] = config.k_avel_parallel;
+  vel_[2] = config.max_vel_parallel;
+  acc_[2] = config.max_acc_parallel;
+  acc_toc_[2] = acc_[2] * config.acc_parallel_toc_factor;
 }
 
 TrackerNode::~TrackerNode()
@@ -426,6 +434,7 @@ void TrackerNode::cbOdomTimeout(const ros::TimerEvent& event)
   ROS_WARN_STREAM("Odometry timeout. Last odometry stamp: " << prev_odom_stamp_);
   v_lim_.clear();
   w_lim_.clear();
+  v_parallel_lim_.clear();
   geometry_msgs::Twist cmd_vel;
   cmd_vel.linear.x = 0.0;
   cmd_vel.angular.z = 0.0;
@@ -477,6 +486,7 @@ void TrackerNode::control(
     {
       v_lim_.clear();
       w_lim_.clear();
+      v_parallel_lim_.clear();
       geometry_msgs::Twist cmd_vel;
       cmd_vel.linear.x = 0;
       cmd_vel.angular.z = 0;
@@ -488,6 +498,7 @@ void TrackerNode::control(
       if (tracking_result.turning_in_place)
       {
         v_lim_.set(0.0, tracking_result.target_linear_vel, acc_[0], dt);
+        v_parallel_lim_.set(0.0, vel_[2], acc_[2], dt);
 
         if (use_time_optimal_control_)
         {
@@ -528,10 +539,17 @@ void TrackerNode::control(
         const double wvel_diff = w_lim_.get() - wref;
         w_lim_.increment(dt * (-dist_diff * k_[0] - angle_diff * k_ang - wvel_diff * k_[2]), vel_[1], acc_[1], dt);
 
+        const double kp1 = dist_diff * k_parallel_[0];
+        const double kp2 = angle_diff * k_parallel_[1];
+        const double kp3 = v_parallel_lim_.get() * k_parallel_[2];
+        v_parallel_lim_.increment(dt * (-kp1 - kp2 - kp3), vel_[2], acc_[2], dt);
+
         ROS_DEBUG(
             "trajectory_tracker: distance residual %0.3f, angular residual %0.3f, ang vel residual %0.3f"
             ", v_lim %0.3f, w_lim %0.3f signed_local_distance %0.3f, k_ang %0.3f",
             dist_diff, angle_diff, wvel_diff, v_lim_.get(), w_lim_.get(), tracking_result.signed_local_distance, k_ang);
+        ROS_DEBUG(" parallel vel: %0.5f, k1: %0.5f,  k2: %0.5f,  k3: %0.5f, ",
+                  v_parallel_lim_.get(), kp1, kp2, kp3);
       }
       if (std::abs(tracking_result.distance_remains) < stop_tolerance_dist_ &&
           std::abs(tracking_result.angle_remains) < stop_tolerance_ang_ &&
@@ -540,9 +558,11 @@ void TrackerNode::control(
       {
         v_lim_.clear();
         w_lim_.clear();
+        v_parallel_lim_.clear();
       }
       geometry_msgs::Twist cmd_vel;
       cmd_vel.linear.x = v_lim_.get();
+      cmd_vel.linear.y = v_parallel_lim_.get();
       cmd_vel.angular.z = w_lim_.get();
       pub_vel_.publish(cmd_vel);
       path_step_done_ = tracking_result.path_step_done;
