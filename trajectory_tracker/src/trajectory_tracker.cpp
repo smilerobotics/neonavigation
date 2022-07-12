@@ -539,7 +539,8 @@ void TrackerNode::control(
         const double wvel_diff = w_lim_.get() - wref;
         w_lim_.increment(dt * (-dist_diff * k_[0] - angle_diff * k_ang - wvel_diff * k_[2]), vel_[1], acc_[1], dt);
 
-        const double kp1 = dist_diff * k_parallel_[0];
+        const double dist_diff_parallel = tracking_result.signed_local_distance < 0 ? dist_diff : -dist_diff;
+        const double kp1 = dist_diff_parallel * k_parallel_[0];
         const double kp2 = angle_diff * k_parallel_[1];
         const double kp3 = v_parallel_lim_.get() * k_parallel_[2];
         v_parallel_lim_.increment(dt * (-kp1 - kp2 - kp3), vel_[2], acc_[2], dt);
