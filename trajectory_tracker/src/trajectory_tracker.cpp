@@ -549,12 +549,14 @@ void TrackerNode::control(
         const double kp3 = v_parallel_lim_.get() * k_parallel_[2];
         v_parallel_lim_.increment(dt * (-kp1 - kp2 - kp3), vel_[2], acc_[2], dt);
 
+        const double path_time_diff = (ros::Time::now() - path_header_.stamp).toSec();
+        ROS_DEBUG_STREAM("Path time: " << path_header_.stamp << " (" << path_time_diff << " secs before)");
         ROS_DEBUG(
             "trajectory_tracker: distance residual %0.3f, angular residual %0.3f, ang vel residual %0.3f"
             ", v_lim %0.3f, w_lim %0.3f signed_local_distance %0.3f, k_ang %0.3f",
             dist_diff, angle_diff, wvel_diff, v_lim_.get(), w_lim_.get(), tracking_result.signed_local_distance, k_ang);
-        ROS_DEBUG(" parallel vel: %0.5f, k1: %0.5f,  k2: %0.5f,  k3: %0.5f, ",
-                  v_parallel_lim_.get(), kp1, kp2, kp3);
+        ROS_DEBUG(" parallel vel: %0.5f, k1: %0.5f,  k2: %0.5f,  k3: %0.5f, direction: %d",
+                  v_parallel_lim_.get(), kp1, kp2, kp3, tracking_result.signed_local_distance < 0);
       }
       if (std::abs(tracking_result.distance_remains) < stop_tolerance_dist_ &&
           std::abs(tracking_result.angle_remains) < stop_tolerance_ang_ &&
