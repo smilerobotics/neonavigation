@@ -100,6 +100,7 @@ GridAstarModel3D::GridAstarModel3D(
   createEuclidCostCache();
 
   motion_primitives_ = MotionPrimitiveBuilder::build(map_info_, cc_, range_);
+
   search_list_rough_.clear();
   Vec d;
   for (d[0] = -range_; d[0] <= range_; d[0]++)

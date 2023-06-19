@@ -73,7 +73,7 @@ private:
   }
 
 protected:
-  constexpr static size_t block_bit_ = log2Recursive(BLOCK_WIDTH);
+  constexpr static size_t block_bit_ = log2Recursive(BLOCK_WIDTH, 0);
   constexpr static size_t block_bit_mask_ = (1 << block_bit_) - 1;
 
   std::unique_ptr<T[]> c_;
