@@ -31,6 +31,7 @@
 #define TRAJECTORY_TRACKER_PATH2D_H
 
 #include <limits>
+#include <utility>
 #include <vector>
 
 #include <Eigen/Core>
