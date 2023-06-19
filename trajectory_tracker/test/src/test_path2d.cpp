@@ -144,6 +144,31 @@ TEST(Path2D, LocalGoalWithSwitchBack)
   }
 }
 
+TEST(Path2D, enumerateLocalGoals)
+{
+  trajectory_tracker::Path2D path;
+  const std::vector<float> yaws = {0.5, -0.2, 1.0};
+  double x = 0.0;
+  double y = 0.0;
+  for (const float yaw : yaws)
+  {
+    for (size_t i = 0; i < 10; ++i)
+    {
+      path.push_back(trajectory_tracker::Pose2D(Eigen::Vector2d(x, y), yaw, 1.0));
+      x += std::cos(yaw) * 0.1;
+      y += std::sin(yaw) * 0.1;
+    }
+    path.push_back(trajectory_tracker::Pose2D(Eigen::Vector2d(x, y), yaw, 1.0));
+  }
+  path.push_back(trajectory_tracker::Pose2D(Eigen::Vector2d(x, y), 0.3, 1.0));
+
+  const auto local_goals = path.enumerateLocalGoals(path.begin(), path.end(), true);
+  ASSERT_EQ(local_goals.size(), 3);
+  ASSERT_EQ(local_goals.at(0) - path.begin(), 11);
+  ASSERT_EQ(local_goals.at(1) - path.begin(), 22);
+  ASSERT_EQ(local_goals.at(2) - path.begin(), 33);
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);

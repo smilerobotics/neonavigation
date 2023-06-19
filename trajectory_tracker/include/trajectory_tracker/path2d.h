@@ -30,8 +30,8 @@
 #ifndef TRAJECTORY_TRACKER_PATH2D_H
 #define TRAJECTORY_TRACKER_PATH2D_H
 
-#include <vector>
 #include <limits>
+#include <vector>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -39,8 +39,8 @@
 #include <geometry_msgs/Pose.h>
 #include <tf2/utils.h>
 
-#include <trajectory_tracker/eigen_line.h>
 #include <trajectory_tracker/average.h>
+#include <trajectory_tracker/eigen_line.h>
 
 namespace trajectory_tracker
 {
@@ -133,9 +133,23 @@ public:
       const float max_search_range = 0,
       const float epsilon = 1e-6) const
   {
+    return findNearestDistance(begin, end, target, max_search_range, epsilon).first;
+  }
+  inline std::pair<ConstIterator, double> findNearestDistance(
+      const ConstIterator& begin,
+      const ConstIterator& end,
+      const Eigen::Vector2d& target,
+      const float max_search_range = 0,
+      const float epsilon = 1e-6) const
+  {
     if (begin == end)
-      return end;
-
+    {
+      if (end == this->end())
+      {
+        return std::make_pair(end, std::numeric_limits<double>::max());
+      }
+      return std::make_pair(end, (end->pos_ - target).norm());
+    }
     float distance_path_search = 0;
     ConstIterator it_nearest = begin;
     float min_dist = (begin->pos_ - target).norm() + epsilon;
@@ -165,8 +179,9 @@ public:
       }
       it_prev = it;
     }
-    return it_nearest;
+    return std::make_pair(it_nearest, min_dist);
   }
+
   inline double remainedDistance(
       const ConstIterator& begin,
       const ConstIterator& nearest,
@@ -244,6 +259,25 @@ public:
       it_prev1 = it;
     }
     return curv;
+  }
+
+  inline std::vector<ConstIterator> enumerateLocalGoals(
+      const ConstIterator& begin_org,
+      const ConstIterator& end_org,
+      const bool allow_backward_motion) const
+  {
+    ConstIterator begin = begin_org;
+    ConstIterator end = end_org;
+    std::vector<ConstIterator> results;
+    while (true)
+    {
+      ConstIterator it = findLocalGoal(begin, end, allow_backward_motion);
+      if (it == end)
+        break;
+      results.push_back(it);
+      begin = it + 1;
+    }
+    return results;
   }
 };
 }  // namespace trajectory_tracker
