@@ -136,12 +136,45 @@ TEST(Path2D, LocalGoalWithSwitchBack)
       yaw += yaw_diff;
       path.push_back(trajectory_tracker::Pose2D(p, yaw, 1));
     }
-    const auto it_local_goal = path.findLocalGoal(path.begin(), path.end(), true);
-    ASSERT_EQ(it_local_goal, path.begin() + 5);
-    ASSERT_EQ(path.findLocalGoal(it_local_goal, path.end(), true), path.end());
 
+    {
+      const auto it_local_goal = path.findLocalGoal(path.begin(), path.end(), true, true);
+      ASSERT_EQ(it_local_goal, path.begin() + 5);
+      ASSERT_EQ(path.findLocalGoal(it_local_goal, path.end(), true, true), path.end());
+    }
+    {
+      const auto it_local_goal = path.findLocalGoal(path.begin(), path.end(), true, false);
+      ASSERT_EQ(it_local_goal, path.begin() + 5);
+      ASSERT_EQ(path.findLocalGoal(it_local_goal, path.end(), true, false), path.end());
+    }
     // no switch back motion under (allow_switchback == false)
-    ASSERT_EQ(path.findLocalGoal(path.begin(), path.end(), false), path.end());
+    ASSERT_EQ(path.findLocalGoal(path.begin(), path.end(), false, true), path.end());
+  }
+}
+
+TEST(Path2D, LocalGoalTest)
+{
+  trajectory_tracker::Path2D path;
+  Eigen::Vector2d p(0, 0);
+  for (size_t i = 0; i <= 10; ++i)
+  {
+    const double yaw = M_PI / 2 / 10;
+    p.x() = std::sin(i * yaw);
+    p.y() = 1.0 - std::cos(i * yaw);
+    path.push_back(trajectory_tracker::Pose2D(p, yaw, 0));
+  }
+  // Turn in-place and go back
+  for (size_t i = 0; i <= 10; ++i)
+  {
+    path.push_back(trajectory_tracker::Pose2D(Eigen::Vector2d(1.0 - i * 0.1, 1.0), 0, 0));
+  }
+  {
+    const auto it_local_goal = path.findLocalGoal(path.begin(), path.end(), true, true);
+    ASSERT_EQ(it_local_goal, path.begin() + 11);
+    ASSERT_EQ(path.findLocalGoal(it_local_goal, path.end(), true, true), path.end());
+  }
+  {
+    ASSERT_EQ(path.findLocalGoal(path.begin(), path.end(), true, false), path.end());
   }
 }
 
