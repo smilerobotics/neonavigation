@@ -351,14 +351,14 @@ public:
       const ConstIterator& end,
       const double linear_speed,
       const double angular_speed,
-      const double initial_eta = 0.0) const
+      const double initial_eta_sec = 0.0) const
   {
     if (begin == end)
     {
       return std::vector<double>();
     }
-    std::vector<double> results(1, initial_eta);
-    double elapsed_sec = initial_eta;
+    std::vector<double> results(1, initial_eta_sec);
+    double elapsed_sec = initial_eta_sec;
     ConstIterator it_prev = begin;
     for (ConstIterator it = begin + 1; it < end; ++it)
     {
