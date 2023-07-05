@@ -562,7 +562,6 @@ protected:
       default:
         break;
     }
-    cnt_stuck_ = 0;
     const auto ts = boost::chrono::high_resolution_clock::now();
     cost_estim_cache_.create(s, e);
     const auto tnow = boost::chrono::high_resolution_clock::now();
@@ -866,6 +865,7 @@ protected:
 
     if (cm_[e] == 100)
     {
+      ROS_DEBUG("Goal is occupied and trying to relocate.");
       updateGoal(false);
       return;
     }
@@ -1538,10 +1538,6 @@ public:
 
             continue;
           }
-          else if (cnt_stuck_ > 0)
-          {
-            status_.error = planner_cspace_msgs::PlannerStatus::PATH_NOT_FOUND;
-          }
           else
           {
             status_.error = planner_cspace_msgs::PlannerStatus::GOING_WELL;
@@ -1726,12 +1722,20 @@ protected:
         gs.position.x, gs.position.y, tf2::getYaw(gs.orientation));
     s_raw.cycleUnsigned(map_info_.angle);
 
+    if (cm_[e] == 100)
+    {
+      ROS_DEBUG("Planning failed as the goal is occupied");
+      status_.error = planner_cspace_msgs::PlannerStatus::PATH_NOT_FOUND;
+      return false;
+    }
+
     Astar::Vec s;
     std::vector<Astar::VecWithCost> starts;
     const auto start_result = buildStarts(gs, ge, s, starts);
     switch (start_result)
     {
       case StartPosePredictor::Result::START_OCCUPIED:
+        ROS_DEBUG("Planning failed as the start is occupied");
         status_.error = planner_cspace_msgs::PlannerStatus::IN_ROCK;
         return false;
       case StartPosePredictor::Result::FAILED:
