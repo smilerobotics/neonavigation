@@ -521,9 +521,9 @@ protected:
     if (goal_changed)
     {
       ROS_INFO(
-          "New goal received (%d, %d, %d)",
-          e[0], e[1], e[2]);
-
+          "New goal received. Start Metric:(%f, %f, %f) Grid:(%d, %d, %d), Goal Metric:(%f, %f, %f) Grid:(%d, %d, %d)",
+          start_.pose.position.x, start_.pose.position.y, tf2::getYaw(start_.pose.orientation), s[0], s[1], s[2],
+          goal_.pose.position.x, goal_.pose.position.y, tf2::getYaw(goal_.pose.orientation), e[0], e[1], e[2]);
       clearHysteresis();
       has_hysteresis_map_ = false;
     }
@@ -1855,6 +1855,8 @@ protected:
     }
     if (!is_goal_same_as_start)
     {
+      ROS_DEBUG("Actual start grid: (%d, %d, %d), goal grid: (%d, %d, %d)",
+                s[0], s[1], s[2], e[0], e[1], e[2]);
       is_planning_succeeded = as_.search(starts, e, path_grid,
                                          model_,
                                          cb_progress,
