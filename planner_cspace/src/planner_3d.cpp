@@ -1722,13 +1722,6 @@ protected:
         gs.position.x, gs.position.y, tf2::getYaw(gs.orientation));
     s_raw.cycleUnsigned(map_info_.angle);
 
-    if (cm_[e] == 100)
-    {
-      ROS_DEBUG("Planning failed as the goal is occupied");
-      status_.error = planner_cspace_msgs::PlannerStatus::PATH_NOT_FOUND;
-      return false;
-    }
-
     Astar::Vec s;
     std::vector<Astar::VecWithCost> starts;
     const auto start_result = buildStarts(gs, ge, s, starts);
