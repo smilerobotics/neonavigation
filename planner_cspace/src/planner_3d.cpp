@@ -448,9 +448,10 @@ protected:
   {
     ROS_DEBUG("%d, %d  (%d,%d,%d)", xy_range, angle_range, s[0], s[1], s[2]);
 
-    float range_min = std::numeric_limits<float>::max();
+    float dist_min = std::numeric_limits<float>::max();
     Astar::Vec s_out;
     Astar::Vec d;
+    float current_cost;
     for (d[2] = -angle_range; d[2] <= angle_range; d[2]++)
     {
       for (d[0] = -xy_range; d[0] <= xy_range; d[0]++)
@@ -474,17 +475,26 @@ protected:
 
           if (cm_[s2] >= cost_acceptable)
             continue;
-          const auto cost = model_->euclidCost(d);
-          if (cost < range_min)
+          const auto dist = model_->euclidCost(d);
+          if (std::abs(dist - dist_min) < 1.0e-3)
           {
-            range_min = cost;
+            if (current_cost > cm_[s2])
+            {
+              s_out = s2;
+              current_cost = cm_[s2];
+            }
+          }
+          else if (dist < dist_min)
+          {
+            dist_min = dist;
             s_out = s2;
+            current_cost = cm_[s2];
           }
         }
       }
     }
 
-    if (range_min == std::numeric_limits<float>::max())
+    if (dist_min == std::numeric_limits<float>::max())
     {
       if (cost_acceptable != 100)
       {
@@ -520,9 +530,10 @@ protected:
     s.cycleUnsigned(map_info_.angle);
     grid_metric_converter::metric2Grid(
         map_info_, e[0], e[1], e[2],
-        goal_.pose.position.x, goal_.pose.position.y,
-        tf2::getYaw(goal_.pose.orientation));
+        goal_raw_.pose.position.x, goal_raw_.pose.position.y,
+        tf2::getYaw(goal_raw_.pose.orientation));
     e.cycleUnsigned(map_info_.angle);
+
     if (goal_changed)
     {
       ROS_INFO(
@@ -565,6 +576,7 @@ protected:
         ROS_INFO("Goal moved. Metric:(%f, %f, %f), Grid:(%d, %d, %d)", x, y, yaw, e[0], e[1], e[2]);
         break;
       default:
+        goal_ = goal_raw_;
         break;
     }
     const auto ts = boost::chrono::high_resolution_clock::now();
