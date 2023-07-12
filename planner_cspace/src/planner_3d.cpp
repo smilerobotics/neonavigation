@@ -1730,7 +1730,6 @@ protected:
         g_tolerance_lin = goal_tolerance_lin_f_;
         g_tolerance_ang = goal_tolerance_ang_f_;
       }
-      g_tolerance_lin -= start_pose_predictor_.getPreservedPathLength();
       if (g_tolerance_lin > 0)
       {
         const double remaining_len_sq = remain.sqlen() * map_info_.linear_resolution * map_info_.linear_resolution;
