@@ -67,6 +67,13 @@ catkin_add_gtest(test_path_interpolator
 )
 target_link_libraries(test_path_interpolator ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
+catkin_add_gtest(test_start_pose_predictor
+  src/test_start_pose_predictor.cpp
+  ../src/rotation_cache.cpp
+  ../src/path_interpolator.cpp
+)
+target_link_libraries(test_start_pose_predictor ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
 add_rostest_gtest(test_debug_outputs
   test/debug_outputs_rostest.test
   src/test_debug_outputs.cpp

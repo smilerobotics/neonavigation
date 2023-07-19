@@ -301,6 +301,17 @@ protected:
         continue;
       }
 
+      if ((gx > 0) && (gx < static_cast<int>(map->info.width) - 1) &&
+          (gy > 0) && (gy < static_cast<int>(map->info.height) - 1))
+      {
+        if ((map->getCost(gx - 1, gy, yaw) == 100) && (map->getCost(gx + 1, gy, yaw) == 100) &&
+            (map->getCost(gx, gy - 1, yaw) == 100) && (map->getCost(gx, gy + 1, yaw) == 100))
+        {
+          map->getCost(gx, gy, yaw) = 100;
+          continue;
+        }
+      }
+
       const int map_x_min = std::max(gx - range_max_, 0);
       const int map_x_max = std::min(gx + range_max_, static_cast<int>(map->info.width) - 1);
       const int map_y_min = std::max(gy - range_max_, 0);

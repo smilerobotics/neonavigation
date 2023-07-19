@@ -30,17 +30,21 @@
 #ifndef TRAJECTORY_TRACKER_PATH2D_H
 #define TRAJECTORY_TRACKER_PATH2D_H
 
-#include <vector>
 #include <limits>
+#include <utility>
+#include <vector>
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include "nav_msgs/Path.h"
 
 #include <geometry_msgs/Pose.h>
 #include <tf2/utils.h>
 
-#include <trajectory_tracker/eigen_line.h>
 #include <trajectory_tracker/average.h>
+#include <trajectory_tracker/eigen_line.h>
+
+#include <ros/ros.h>
 
 namespace trajectory_tracker
 {
@@ -104,24 +108,36 @@ public:
   inline ConstIterator findLocalGoal(
       const ConstIterator& begin,
       const ConstIterator& end,
-      const bool allow_backward_motion) const
+      const bool allow_switch_back,
+      const bool allow_in_place_turn = true,
+      const double epsilon = 1e-6) const
   {
     float sign_vel_prev = 0;
     ConstIterator it_prev = begin;
     for (ConstIterator it = begin + 1; it < end; ++it)
     {
-      // stop reading forward if the path is switching back or in-place turning
-      if (it->pos_ == it_prev->pos_)
-        return it;
-
-      const Eigen::Vector2d inc = it->pos_ - it_prev->pos_;
-
-      const float angle = atan2(inc[1], inc[0]);
-      const float angle_pose = allow_backward_motion ? it->yaw_ : angle;
-      const float sign_vel_req = std::cos(angle) * std::cos(angle_pose) + std::sin(angle) * std::sin(angle_pose);
-      if (sign_vel_prev * sign_vel_req < 0)
-        return it;
-      sign_vel_prev = sign_vel_req;
+      if ((it->pos_ - it_prev->pos_).squaredNorm() < epsilon)
+      {
+        if (allow_in_place_turn)
+        {
+          // stop reading forward if the path is in-place turning
+          return it;
+        }
+        sign_vel_prev = 0;
+      }
+      else if (allow_switch_back)
+      {
+        const Eigen::Vector2d inc = it->pos_ - it_prev->pos_;
+        const float angle = atan2(inc[1], inc[0]);
+        const float angle_pose = it->yaw_;
+        const float sign_vel_req = std::cos(angle) * std::cos(angle_pose) + std::sin(angle) * std::sin(angle_pose);
+        if (sign_vel_prev * sign_vel_req < 0)
+        {
+          // stop reading forward if the path is switching back
+          return it;
+        }
+        sign_vel_prev = sign_vel_req;
+      }
       it_prev = it;
     }
     return end;
@@ -133,9 +149,23 @@ public:
       const float max_search_range = 0,
       const float epsilon = 1e-6) const
   {
+    return findNearestDistance(begin, end, target, max_search_range, epsilon).first;
+  }
+  inline std::pair<ConstIterator, double> findNearestDistance(
+      const ConstIterator& begin,
+      const ConstIterator& end,
+      const Eigen::Vector2d& target,
+      const float max_search_range = 0,
+      const float epsilon = 1e-6) const
+  {
     if (begin == end)
-      return end;
-
+    {
+      if (end == this->end())
+      {
+        return std::make_pair(end, std::numeric_limits<double>::max());
+      }
+      return std::make_pair(end, (end->pos_ - target).norm());
+    }
     float distance_path_search = 0;
     ConstIterator it_nearest = begin;
     float min_dist = (begin->pos_ - target).norm() + epsilon;
@@ -165,7 +195,7 @@ public:
       }
       it_prev = it;
     }
-    return it_nearest;
+    return std::make_pair(it_nearest, min_dist);
   }
   inline double remainedDistance(
       const ConstIterator& begin,
@@ -244,6 +274,108 @@ public:
       it_prev1 = it;
     }
     return curv;
+  }
+  inline std::vector<ConstIterator> enumerateLocalGoals(
+      const ConstIterator& begin,
+      const ConstIterator& end,
+      const bool allow_switch_back,
+      const bool allow_in_place_turn = true,
+      const double epsilon = 1e-6) const
+  {
+    ConstIterator it_search_begin = begin;
+    std::vector<ConstIterator> results;
+    while (true)
+    {
+      const ConstIterator it_local_goal =
+          findLocalGoal(it_search_begin, end, allow_switch_back, allow_in_place_turn, epsilon);
+      if (it_local_goal == end)
+        break;
+      results.push_back(it_local_goal);
+      it_search_begin = it_local_goal;
+    }
+    return results;
+  }
+  // It might be better to change to nav_msgs::Path
+  inline void fromMsg(const std::vector<geometry_msgs::PoseStamped>& path_poses,
+                      const double in_place_turn_eps = 1.0e-6)
+  {
+    clear();
+    bool in_place_turning = false;
+    trajectory_tracker::Pose2D in_place_turn_end;
+    for (const auto& pose : path_poses)
+    {
+      const trajectory_tracker::Pose2D next(pose.pose, 0.0);
+      if (empty())
+      {
+        push_back(next);
+        continue;
+      }
+      if ((back().pos_ - next.pos_).squaredNorm() >= std::pow(in_place_turn_eps, 2))
+      {
+        if (in_place_turning)
+        {
+          push_back(in_place_turn_end);
+          in_place_turning = false;
+        }
+        push_back(next);
+      }
+      else
+      {
+        in_place_turn_end = trajectory_tracker::Pose2D(
+            back().pos_, next.yaw_, next.velocity_);
+        in_place_turning = true;
+      }
+    }
+    if (in_place_turning)
+    {
+      push_back(in_place_turn_end);
+    }
+  }
+  inline void toMsg(nav_msgs::Path& path) const
+  {
+    path.poses.clear();
+    for (const auto& pose : *this)
+    {
+      geometry_msgs::PoseStamped pose_msg;
+      pose_msg.header = path.header;
+      pose_msg.pose.position.x = pose.pos_.x();
+      pose_msg.pose.position.y = pose.pos_.y();
+      pose_msg.pose.orientation.z = std::sin(pose.yaw_ / 2);
+      pose_msg.pose.orientation.w = std::cos(pose.yaw_ / 2);
+      path.poses.push_back(pose_msg);
+    }
+  }
+
+  inline std::vector<double> getETAs(
+      const ConstIterator& begin,
+      const ConstIterator& end,
+      const double linear_speed,
+      const double angular_speed,
+      const double initial_eta_sec = 0.0) const
+  {
+    if (begin == end)
+    {
+      return std::vector<double>();
+    }
+    std::vector<double> results(1, initial_eta_sec);
+    double elapsed_sec = initial_eta_sec;
+    ConstIterator it_prev = begin;
+    for (ConstIterator it = begin + 1; it < end; ++it)
+    {
+      const double dist = (it_prev->pos_ - it->pos_).norm();
+      if (dist > 1.0e-6)
+      {
+        elapsed_sec += dist / linear_speed;
+      }
+      else
+      {
+        const double ang_diff = std::abs(it_prev->yaw_ - it->yaw_);
+        elapsed_sec += ang_diff / angular_speed;
+      }
+      results.push_back(elapsed_sec);
+      it_prev = it;
+    }
+    return results;
   }
 };
 }  // namespace trajectory_tracker
