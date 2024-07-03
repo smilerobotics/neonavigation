@@ -8,6 +8,7 @@ import rclpy
 import rclpy.client
 import rclpy.clock
 import rclpy.node
+from action_msgs.msg import GoalStatus
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseStamped
 from launch import LaunchDescription
@@ -82,10 +83,6 @@ class TestActionServer(unittest.TestCase):
         distance_to_goal = feedback.feedback.distance_to_goal
         self._node.get_logger().info(f"Remaining distance: {distance_to_goal}")
 
-    def goal_response_callback(self, future: rclpy.client.Future) -> None:
-        self._result = future.result()
-        self._node.get_logger().info("Goal received")
-
     def test_client_connection(self) -> None:
         self._node.get_logger().info("Waiting for action server")
         self.assertTrue(self._action_client.wait_for_server(1.0))
@@ -111,15 +108,6 @@ class TestActionServer(unittest.TestCase):
         self.assertTrue(goal_handle.accepted)
 
         result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(self.goal_response_callback)
         rclpy.spin_until_future_complete(self._node, result_future)
         self.assertTrue(result_future.done())
-        for i in range(10):
-            rclpy.spin_once(self._node)
-            time.sleep(0.1)
-            if self._result:
-                break
-
-        self.assertTrue(self._result is not None)
-        if self._result:
-            self.assertTrue(self._result.result is not None)
+        self.assertEqual(result_future.result().status, GoalStatus.STATUS_SUCCEEDED)

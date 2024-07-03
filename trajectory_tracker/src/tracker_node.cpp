@@ -712,7 +712,7 @@ bool TrackerNode::spinActionServerOnce()
   remaining_path.header = received_path_.header;
   if ((path_step_done_ >= 0) && (path_step_done_ < received_path_.poses.size()))
   {
-    for (size_t i = path_step_done_ + 1; i < received_path_.poses.size(); i++)
+    for (size_t i = path_step_done_ + 1; i < received_path_.poses.size(); ++i)
     {
       remaining_path.poses.push_back(received_path_.poses[i]);
     }
