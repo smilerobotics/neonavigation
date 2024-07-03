@@ -64,6 +64,9 @@ if(BUILD_TESTING)
     ARGS test_executable:=test_trajectory_tracker_with_odom
     TIMEOUT 60
   )
+  add_launch_test(test/test/test_trajectory_tracker_action_server_launch.py
+    TIMEOUT 60
+  )
 endif()
 
 ament_auto_package()

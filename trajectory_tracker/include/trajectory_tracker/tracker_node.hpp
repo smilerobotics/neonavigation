@@ -73,7 +73,6 @@ class TrackerNode : public neonavigation_common::NeonavigationNode
 public:
   TrackerNode(const std::string& name, const rclcpp::NodeOptions& options);
   void initialize();
-  ~TrackerNode();
 
 private:
   std::string topic_path_;
@@ -122,6 +121,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_vel_;
   rclcpp::Publisher<trajectory_tracker_msgs::msg::TrajectoryTrackerStatus>::SharedPtr pub_status_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_tracking_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_received_path_;
   tf2_ros::Buffer tfbuf_;
   tf2_ros::TransformListener tfl_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -138,8 +138,10 @@ private:
   using Action = nav2_msgs::action::FollowPath;
   using ActionServer = nav2_util::SimpleActionServer<Action>;
   std::unique_ptr<ActionServer> action_server_;
-  std::recursive_mutex action_server_mutex_;
+  std::mutex action_server_mutex_;
+  std::condition_variable action_server_cond_;
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
+  nav_msgs::msg::Path received_path_;
 
   struct TrackingResult
   {
@@ -188,6 +190,7 @@ private:
   TrackingResult getTrackingResult(const tf2::Stamped<tf2::Transform>&, const Eigen::Vector3d&, const double,
                                    const double) const;
   void computeControl();
+  bool spinActionServerOnce();
   void publishZeroVelocity();
   void resetLatestStatus();
 };
