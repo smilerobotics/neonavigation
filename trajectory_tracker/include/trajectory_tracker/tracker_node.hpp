@@ -113,6 +113,8 @@ private:
   double k_avel_rotation_;
   double goal_tolerance_lin_vel_;
   double goal_tolerance_ang_vel_;
+  double initial_tracking_search_range_;
+  double tracking_search_range_;
 
   rclcpp::SubscriptionBase::SharedPtr sub_path_;
   rclcpp::SubscriptionBase::SharedPtr sub_path_velocity_;
@@ -142,6 +144,8 @@ private:
   std::condition_variable action_server_cond_;
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
   nav_msgs::msg::Path received_path_;
+  int64_t unable_to_follow_path_threshold_;
+  int unable_to_follow_path_count_;
 
   struct TrackingResult
   {

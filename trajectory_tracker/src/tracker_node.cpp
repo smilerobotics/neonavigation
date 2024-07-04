@@ -126,6 +126,10 @@ void TrackerNode::initialize()
   declare_dynamic_parameter("predict_odom", &predict_odom_, true);
   declare_dynamic_parameter("max_dt", &max_dt_, 0.1);
   declare_dynamic_parameter("odom_timeout_sec", &odom_timeout_sec_, 0.1);
+  declare_dynamic_parameter("unable_to_follow_path_threshold", &unable_to_follow_path_threshold_, 5l);
+  declare_dynamic_parameter("tracking_search_range", &tracking_search_range_, 1.0);
+  declare_dynamic_parameter("initial_tracking_search_range", &initial_tracking_search_range_, 0.0);
+
   onDynamicParameterUpdated({});
 
   if (declare_parameter("use_action_server", false))
@@ -466,7 +470,7 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
   const trajectory_tracker::Path2D::ConstIterator it_local_goal =
       lpath.findLocalGoal(lpath.cbegin() + path_step_done_, lpath.cend(), allow_backward_);
 
-  const float max_search_range = (path_step_done_ > 0) ? 1.0 : 0.0;
+  const float max_search_range = (path_step_done_ > 0) ? tracking_search_range_ : initial_tracking_search_range_;
   const trajectory_tracker::Path2D::ConstIterator it_nearest =
       lpath.findNearest(lpath.cbegin() + path_step_done_, it_local_goal, origin, max_search_range, epsilon_);
 
@@ -637,6 +641,7 @@ void TrackerNode::computeControl()
 {
   RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
   received_path_ = nav_msgs::msg::Path();
+  unable_to_follow_path_count_ = 0;
   try
   {
     {
@@ -699,6 +704,21 @@ bool TrackerNode::spinActionServerOnce()
     action_server_->succeeded_current();
     return true;
   }
+  if (latest_status_.status == trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FAR_FROM_PATH)
+  {
+    ++unable_to_follow_path_count_;
+    if (unable_to_follow_path_count_ >= unable_to_follow_path_threshold_)
+    {
+      RCLCPP_WARN(get_logger(), "Unable to follow path. Stopping the robot.");
+      action_server_->terminate_all();
+      return true;
+    }
+  }
+  else
+  {
+    unable_to_follow_path_count_ = 0;
+  }
+
   RCLCPP_DEBUG(get_logger(),
                "Feedback Status: %s, remaining distance: %0.3f, angle: %0.3f, index: %d, dist_to_path: %0.3f",
                to_string(latest_status_).c_str(), latest_status_.distance_remains, latest_status_.angle_remains,

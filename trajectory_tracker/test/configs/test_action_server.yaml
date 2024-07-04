@@ -27,3 +27,4 @@ trajectory_tracker:
     k_ang_rotation: 8.0
     k_avel_rotation: 5.0
     use_action_server: true
+    dist_stop: 0.2
