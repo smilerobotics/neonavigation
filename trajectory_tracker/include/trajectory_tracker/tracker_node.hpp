@@ -115,6 +115,8 @@ private:
   double goal_tolerance_ang_vel_;
   double initial_tracking_search_range_;
   double tracking_search_range_;
+  bool keep_last_rotation_;
+  bool is_robot_rotating_on_last_;
 
   rclcpp::SubscriptionBase::SharedPtr sub_path_;
   rclcpp::SubscriptionBase::SharedPtr sub_path_velocity_;
@@ -197,6 +199,9 @@ private:
   bool spinActionServerOnce();
   void publishZeroVelocity();
   void resetLatestStatus();
+
+  template <typename MSG_TYPE>
+  bool shouldKeepRotation(const MSG_TYPE& msg) const;
 };
 
 }  // namespace trajectory_tracker

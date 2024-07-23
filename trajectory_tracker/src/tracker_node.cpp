@@ -129,6 +129,8 @@ void TrackerNode::initialize()
   declare_dynamic_parameter("unable_to_follow_path_threshold", &unable_to_follow_path_threshold_, 5l);
   declare_dynamic_parameter("tracking_search_range", &tracking_search_range_, 1.0);
   declare_dynamic_parameter("initial_tracking_search_range", &initial_tracking_search_range_, 0.0);
+  declare_dynamic_parameter("keep_last_rotation", &keep_last_rotation_, false);
+  is_robot_rotating_on_last_ = false;
 
   onDynamicParameterUpdated({});
 
@@ -188,12 +190,51 @@ void TrackerNode::cbSpeed(const std_msgs::msg::Float32& msg)
 }
 
 template <typename MSG_TYPE>
+bool TrackerNode::shouldKeepRotation(const MSG_TYPE& msg) const
+{
+  if (is_robot_rotating_on_last_ && msg.poses.size() > 0 && path_.size() > 0)
+  {
+    const auto& last_pose = msg.poses.back();
+    const auto& last_path_pose = path_.back();
+    const double yaw_diff = std::abs(tf2::getYaw(last_pose.pose.orientation) - last_path_pose.yaw_);
+    const double dist_diff = std::hypot(last_pose.pose.position.x - last_path_pose.pos_.x(),
+                                        last_pose.pose.position.y - last_path_pose.pos_.y());
+    if (yaw_diff < goal_tolerance_dist_ && dist_diff < goal_tolerance_ang_)
+    {
+      return true;
+    }
+    RCLCPP_INFO(get_logger(), "Goal updated. yaw_diff %0.3f, dist_diff %0.3f", yaw_diff, dist_diff);
+  }
+  return false;
+}
+
+template <typename MSG_TYPE>
 void TrackerNode::cbPath(const MSG_TYPE& msg)
 {
   path_header_ = msg.header;
   is_path_updated_ = true;
   path_step_done_ = 0;
-  path_.fromMsg(msg, epsilon_);
+
+  if (msg.poses.size() > 0)
+  {
+    const geometry_msgs::msg::Pose& last_pose = msg.poses.back().pose;
+    RCLCPP_INFO(get_logger(), "Goal Pose: (%f, %f), yaw: %f", last_pose.position.x, last_pose.position.y,
+                tf2::getYaw(last_pose.orientation));
+  }
+
+  if (shouldKeepRotation(msg))
+  {
+    RCLCPP_INFO(get_logger(), "Robot is rotating on last pose and the goal is not updated. Keep the last rotation.");
+    MSG_TYPE new_path_msg;
+    new_path_msg.header = msg.header;
+    new_path_msg.poses.push_back(msg.poses.back());
+    path_.fromMsg(new_path_msg, epsilon_);
+  }
+  else
+  {
+    path_.fromMsg(msg, epsilon_);
+    is_robot_rotating_on_last_ = false;
+  }
   for (const auto& path_pose : path_)
   {
     if (std::isfinite(path_pose.velocity_) && path_pose.velocity_ < -0.0)
@@ -360,6 +401,11 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
         }
         RCLCPP_DEBUG(get_logger(), "angular residual %0.3f, angular vel %0.3f", tracking_result.angle_remains,
                      w_lim_.get());
+        if (keep_last_rotation_ && (tracking_result.distance_remains == 0.0))
+        {
+          RCLCPP_INFO(get_logger(), "Robot is rotating on last pose");
+          is_robot_rotating_on_last_ = true;
+        }
       }
       else
       {
@@ -641,6 +687,7 @@ void TrackerNode::computeControl()
 {
   RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
   received_path_ = nav_msgs::msg::Path();
+  is_robot_rotating_on_last_ = false;
   unable_to_follow_path_count_ = 0;
   try
   {
