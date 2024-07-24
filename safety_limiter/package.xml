@@ -27,15 +27,11 @@
   <depend>tf2_sensor_msgs</depend>
   <depend>neonavigation_common</depend>
   <depend>safety_limiter_msgs</depend>
-
   <depend>eigen</depend>
   <depend>nav2_costmap_2d</depend>
   <depend>rclcpp</depend>
-
   <depend>laser_geometry</depend>
 
-  <build_depend>libpcl-all-dev</build_depend>
-  <exec_depend>libpcl-all</exec_depend>
   <export>
     <build_type>ament_cmake</build_type>
   </export>

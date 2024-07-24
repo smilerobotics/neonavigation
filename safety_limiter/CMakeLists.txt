@@ -2,33 +2,13 @@ cmake_minimum_required(VERSION 3.5)
 project(safety_limiter)
 
 find_package(ament_cmake_auto REQUIRED)
-find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_definitions(${PCL_DEFINITIONS})
 
-# Binary installed pcl provided by Linux distro is built with -march=native
-# which causes a lot of compatibility problems.
-# Define PCL_NO_PRECOMPILE to disable using the binary version.
-add_definitions(-DPCL_NO_PRECOMPILE)
-
-# Workaround for debian stretch build (https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=894656)
-list(REMOVE_ITEM PCL_LIBRARIES
-  "vtkGUISupportQt"
-  "vtkGUISupportQtOpenGL"
-  "vtkGUISupportQtSQL"
-  "vtkGUISupportQtWebkit"
-  "vtkViewsQt"
-  "vtkRenderingQt"
-)
-
-# Workaround for the bug in PCL(<1.8.1) https://github.com/PointCloudLibrary/pcl/issues/1406
-remove_definitions(-DDISABLE_LIBUSB-1.0)
-
-include_directories(${PCL_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
+include_directories(${Eigen_INCLUDE_DIRS})
 ament_auto_add_executable(safety_limiter src/safety_limiter.cpp)
 
 if(BUILD_TESTING)
