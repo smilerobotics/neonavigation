@@ -2,13 +2,11 @@ cmake_minimum_required(VERSION 3.5)
 project(safety_limiter)
 
 find_package(ament_cmake_auto REQUIRED)
-find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${Eigen_INCLUDE_DIRS})
 ament_auto_add_executable(safety_limiter src/safety_limiter.cpp)
 
 if(BUILD_TESTING)

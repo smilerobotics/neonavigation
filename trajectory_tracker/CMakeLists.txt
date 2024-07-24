@@ -2,13 +2,11 @@ cmake_minimum_required(VERSION 3.5)
 project(trajectory_tracker)
 
 find_package(ament_cmake_auto REQUIRED)
-find_package(Eigen3 REQUIRED)
 ament_auto_find_build_dependencies()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(include ${Eigen_INCLUDE_DIRS})
 ament_auto_add_library(trajectory_tracker_core SHARED
   src/tracker_node.cpp)
 ament_auto_add_executable(trajectory_tracker src/trajectory_tracker_main.cpp)
