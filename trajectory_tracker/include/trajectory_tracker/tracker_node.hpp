@@ -142,7 +142,7 @@ private:
   using Action = nav2_msgs::action::FollowPath;
   using ActionServer = nav2_util::SimpleActionServer<Action>;
   std::unique_ptr<ActionServer> action_server_;
-  std::recursive_mutex action_server_mutex_;
+  std::mutex action_server_mutex_;
   std::condition_variable action_server_cond_;
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
   nav_msgs::msg::Path received_path_;
