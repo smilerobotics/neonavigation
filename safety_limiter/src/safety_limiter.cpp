@@ -70,6 +70,68 @@
 
 namespace safety_limiter
 {
+class PointcloudAccumulator
+{
+public:
+  PointcloudAccumulator()
+    : time_to_hold_(0, 0)
+  {
+  }
+
+  explicit PointcloudAccumulator(const rclcpp::Duration& duration)
+    : time_to_hold_(0, 0)
+  {
+    reset(duration);
+  }
+
+  void reset(const rclcpp::Duration& duration)
+  {
+    time_to_hold_ = duration;
+    clear();
+  }
+
+  void clear()
+  {
+    points_.clear();
+  }
+
+  void push(const sensor_msgs::msg::PointCloud2& points)
+  {
+    for (auto it = points_.begin(); it != points_.end(); ++it)
+    {
+      if (rclcpp::Time(it->header.stamp) + time_to_hold_ < rclcpp::Time(points.header.stamp))
+      {
+        it = points_.erase(it);
+        continue;
+      }
+      break;
+    }
+    points_.push_back(points);
+  }
+
+  typename std::list<sensor_msgs::msg::PointCloud2>::iterator begin()
+  {
+    return points_.begin();
+  }
+  typename std::list<sensor_msgs::msg::PointCloud2>::iterator end()
+  {
+    return points_.end();
+  }
+
+  typename std::list<sensor_msgs::msg::PointCloud2>::const_iterator begin() const
+  {
+    return points_.cbegin();
+  }
+  typename std::list<sensor_msgs::msg::PointCloud2>::const_iterator end() const
+  {
+    return points_.cend();
+  }
+
+protected:
+  rclcpp::Duration time_to_hold_;
+  std::list<sensor_msgs::msg::PointCloud2> points_;
+};
+
 pcl::PointXYZ operator-(const pcl::PointXYZ& a, const pcl::PointXYZ& b)
 {
   auto c = a;
@@ -215,7 +277,7 @@ protected:
 
   geometry_msgs::msg::Twist twist_;
   rclcpp::Time last_cloud_stamp_;
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_accum_;
+  PointcloudAccumulator cloud_accum_;
   bool cloud_clear_;
   double hz_;
   double timeout_;
@@ -249,6 +311,7 @@ protected:
   bool has_twist_;
   bool has_collision_at_now_;
   rclcpp::Time stuck_started_since_;
+  double cloud_accumulation_duration_;
 
   constexpr static float EPSILON = 1e-6;
 
@@ -263,7 +326,6 @@ public:
     , tfbuf_(get_clock())
     , tfl_(tfbuf_)
     , last_cloud_stamp_(0, 0, get_clock()->get_clock_type())
-    , cloud_accum_(new pcl::PointCloud<pcl::PointXYZ>)
     , cloud_clear_(false)
     , last_disable_cmd_(0, 0, get_clock()->get_clock_type())
     , hold_(0, 0)
@@ -298,6 +360,7 @@ public:
     declare_dynamic_parameter("watchdog_interval", &watchdog_interval_d_, 0.0);
     declare_dynamic_parameter("footprint_radius", &footprint_radius_, 0.0);
     declare_dynamic_parameter("footprint", &footprint_str_, std::string());
+    declare_dynamic_parameter("cloud_accumulation_duration", &cloud_accumulation_duration_, 0.5);
     if (footprint_str_.empty() && footprint_radius_ == 0.0)
     {
       RCLCPP_FATAL(get_logger(), "Footprint doesn't specified");
@@ -395,6 +458,7 @@ protected:
                                            std::bind(&SafetyLimiterNode::cbWatchdogTimer, this));
     predict_timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::duration<double>(1.0 / hz_),
                                           std::bind(&SafetyLimiterNode::cbPredictTimer, this));
+    cloud_accum_.reset(rclcpp::Duration::from_seconds(cloud_accumulation_duration_));
   }
 
   void cbWatchdogReset(const std_msgs::msg::Empty& msg)
@@ -425,7 +489,6 @@ protected:
       geometry_msgs::msg::Twist cmd_vel;
       pub_twist_->publish(cmd_vel);
 
-      cloud_accum_.reset(new pcl::PointCloud<pcl::PointXYZ>);
       has_cloud_ = false;
       r_lim_ = 0;
 
@@ -445,12 +508,19 @@ protected:
     }
     RCLCPP_DEBUG(get_logger(), "safety_limiter: r_lim = %0.3f, r_lim_current = %0.3f, hold_off = %0.3f", r_lim_,
                  r_lim_current, hold_off_.seconds());
-    cloud_clear_ = true;
+    // cloud_clear_ = true;
     diag_updater_->force_update();
   }
   double predict(const geometry_msgs::msg::Twist& in)
   {
-    if (cloud_accum_->size() == 0)
+    auto cloud_accum = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    for (const auto& point : cloud_accum_)
+    {
+      pcl::PointCloud<pcl::PointXYZ> pc;
+      pcl::fromROSMsg(point, pc);
+      *cloud_accum += pc;
+    }
+    if (cloud_accum->size() == 0)
     {
       if (allow_empty_cloud_)
       {
@@ -460,13 +530,10 @@ protected:
       return 0.0;
     }
 
-    const rclcpp::Time pcl_stamp = pcl_conversions::fromPCL(cloud_accum_->header.stamp);
-    const bool can_transform = tfbuf_.canTransform(base_frame_id_, cloud_accum_->header.frame_id, pcl_stamp);
-    const rclcpp::Time stamp = can_transform ? pcl_stamp : rclcpp::Time(0);
     geometry_msgs::msg::TransformStamped fixed_to_base;
     try
     {
-      fixed_to_base = tfbuf_.lookupTransform(base_frame_id_, cloud_accum_->header.frame_id, stamp);
+      fixed_to_base = tfbuf_.lookupTransform(base_frame_id_, fixed_frame_id_, rclcpp::Time(0));
     }
     catch (tf2::TransformException& e)
     {
@@ -479,11 +546,11 @@ protected:
                              fixed_to_base.transform.translation.z) *
         Eigen::Quaternionf(fixed_to_base.transform.rotation.w, fixed_to_base.transform.rotation.x,
                            fixed_to_base.transform.rotation.y, fixed_to_base.transform.rotation.z);
-    pcl::transformPointCloud(*cloud_accum_, *cloud_accum_, fixed_to_base_eigen);
+    pcl::transformPointCloud(*cloud_accum, *cloud_accum, fixed_to_base_eigen);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc(new pcl::PointCloud<pcl::PointXYZ>);
     pcl::VoxelGrid<pcl::PointXYZ> ds;
-    ds.setInputCloud(cloud_accum_);
+    ds.setInputCloud(cloud_accum);
     ds.setLeafSize(downsample_grid_, downsample_grid_, downsample_grid_);
     ds.filter(*pc);
 
@@ -727,17 +794,12 @@ protected:
       return;
     }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fixed(new pcl::PointCloud<pcl::PointXYZ>());
-    cloud_fixed->header.frame_id = fixed_frame_id_;
-    pcl::fromROSMsg(cloud_msg_fixed, *cloud_fixed);
-
     if (cloud_clear_)
     {
       cloud_clear_ = false;
-      cloud_accum_.reset(new pcl::PointCloud<pcl::PointXYZ>);
+      cloud_accum_.clear();
     }
-    *cloud_accum_ += *cloud_fixed;
-    cloud_accum_->header.frame_id = fixed_frame_id_;
+    cloud_accum_.push(cloud_msg_fixed);
     last_cloud_stamp_ = msg.header.stamp;
     has_cloud_ = true;
   }
