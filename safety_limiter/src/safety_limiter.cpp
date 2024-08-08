@@ -278,7 +278,6 @@ protected:
   geometry_msgs::msg::Twist twist_;
   rclcpp::Time last_cloud_stamp_;
   PointcloudAccumulator cloud_accum_;
-  bool cloud_clear_;
   double hz_;
   double timeout_;
   double disable_timeout_;
@@ -326,7 +325,6 @@ public:
     , tfbuf_(get_clock())
     , tfl_(tfbuf_)
     , last_cloud_stamp_(0, 0, get_clock()->get_clock_type())
-    , cloud_clear_(false)
     , last_disable_cmd_(0, 0, get_clock()->get_clock_type())
     , hold_(0, 0)
     , hold_off_(0, 0, get_clock()->get_clock_type())
@@ -360,7 +358,7 @@ public:
     declare_dynamic_parameter("watchdog_interval", &watchdog_interval_d_, 0.0);
     declare_dynamic_parameter("footprint_radius", &footprint_radius_, 0.0);
     declare_dynamic_parameter("footprint", &footprint_str_, std::string());
-    declare_dynamic_parameter("cloud_accumulation_duration", &cloud_accumulation_duration_, 0.5);
+    declare_dynamic_parameter("cloud_accumulation_duration", &cloud_accumulation_duration_, 1.0 / hz_);
     if (footprint_str_.empty() && footprint_radius_ == 0.0)
     {
       RCLCPP_FATAL(get_logger(), "Footprint doesn't specified");
@@ -518,7 +516,6 @@ protected:
     }
     RCLCPP_DEBUG(get_logger(), "safety_limiter: r_lim = %0.3f, r_lim_current = %0.3f, hold_off = %0.3f", r_lim_,
                  r_lim_current, hold_off_.seconds());
-    // cloud_clear_ = true;
     diag_updater_->force_update();
   }
   double predict(const geometry_msgs::msg::Twist& in)
@@ -802,12 +799,6 @@ protected:
     {
       RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 1000, "safety_limiter: Transform failed: %s", e.what());
       return;
-    }
-
-    if (cloud_clear_)
-    {
-      cloud_clear_ = false;
-      cloud_accum_.clear();
     }
     cloud_accum_.push(cloud_msg_fixed);
     last_cloud_stamp_ = msg.header.stamp;
