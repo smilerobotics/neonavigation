@@ -453,9 +453,16 @@ protected:
     tmax_ += std::max(d_margin_ / vel_[0], yaw_margin_ / vel_[1]);
     r_lim_ = 1.0;
 
-    RCLCPP_WARN(get_logger(), "hz: %f, tmax_: %f", hz_, tmax_);
-    watchdog_timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::duration<double>(watchdog_interval_d_),
-                                           std::bind(&SafetyLimiterNode::cbWatchdogTimer, this));
+    if (watchdog_interval_d_ > 0.0)
+    {
+      watchdog_timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::duration<double>(watchdog_interval_d_),
+                                             std::bind(&SafetyLimiterNode::cbWatchdogTimer, this));
+    }
+    else
+    {
+      RCLCPP_INFO(get_logger(), "safety_limiter: Watchdog disabled");
+      cbWatchdogReset(std_msgs::msg::Empty());
+    }
     predict_timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::duration<double>(1.0 / hz_),
                                           std::bind(&SafetyLimiterNode::cbPredictTimer, this));
     cloud_accum_.reset(rclcpp::Duration::from_seconds(cloud_accumulation_duration_));
@@ -463,7 +470,10 @@ protected:
 
   void cbWatchdogReset(const std_msgs::msg::Empty& msg)
   {
-    watchdog_timer_->reset();
+    if (watchdog_timer_)
+    {
+      watchdog_timer_->reset();
+    }
     watchdog_stop_ = false;
   }
   void cbWatchdogTimer()
