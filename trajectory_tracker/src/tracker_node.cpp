@@ -694,6 +694,12 @@ void TrackerNode::computeControl()
     {
       std::lock_guard<std::mutex> lock(action_server_mutex_);
       resetLatestStatus();
+      if (action_server_->get_current_goal()->path.poses.size() <= 1)
+      {
+        RCLCPP_WARN(get_logger(), "Too short path is given. Stopping the robot.");
+        action_server_->succeeded_current();
+        return;
+      }
       cbPath(action_server_->get_current_goal()->path);
       received_path_ = action_server_->get_current_goal()->path;
     }
@@ -745,25 +751,25 @@ bool TrackerNode::spinActionServerOnce()
     received_path_ = goal->path;
     return false;
   }
-  if (latest_status_.status == trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::GOAL)
+  switch (latest_status_.status)
   {
-    RCLCPP_DEBUG(get_logger(), "Reached the goal!");
-    action_server_->succeeded_current();
-    return true;
-  }
-  if (latest_status_.status == trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FAR_FROM_PATH)
-  {
-    ++unable_to_follow_path_count_;
-    if (unable_to_follow_path_count_ >= unable_to_follow_path_threshold_)
-    {
-      RCLCPP_WARN(get_logger(), "Unable to follow path. Stopping the robot.");
-      action_server_->terminate_all();
+    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::NO_PATH:
+    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FAR_FROM_PATH:
+      ++unable_to_follow_path_count_;
+      if (unable_to_follow_path_count_ >= unable_to_follow_path_threshold_)
+      {
+        RCLCPP_WARN(get_logger(), "Unable to follow path. Stopping the robot.");
+        action_server_->terminate_all();
+        return true;
+      }
+      break;
+    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::GOAL:
+      RCLCPP_DEBUG(get_logger(), "Reached the goal!");
+      action_server_->succeeded_current();
       return true;
-    }
-  }
-  else
-  {
-    unable_to_follow_path_count_ = 0;
+    default:
+      unable_to_follow_path_count_ = 0;
+      break;
   }
 
   RCLCPP_DEBUG(get_logger(),
