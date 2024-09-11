@@ -394,14 +394,14 @@ public:
     if (num_input_lasers == 1)
     {
       sub_scans_.push_back(create_subscription<sensor_msgs::msg::LaserScan>(
-          "scan", 1, std::bind(&SafetyLimiterNode::cbScan, this, std::placeholders::_1)));
+          "scan", rclcpp::SensorDataQoS(), std::bind(&SafetyLimiterNode::cbScan, this, std::placeholders::_1)));
     }
     else
     {
       for (int i = 0; i < num_input_lasers; ++i)
       {
         sub_scans_.push_back(create_subscription<sensor_msgs::msg::LaserScan>(
-            "scan" + std::to_string(i), 1, std::bind(&SafetyLimiterNode::cbScan, this, std::placeholders::_1)));
+            "scan" + std::to_string(i), rclcpp::SensorDataQoS(), std::bind(&SafetyLimiterNode::cbScan, this, std::placeholders::_1)));
       }
     }
 
