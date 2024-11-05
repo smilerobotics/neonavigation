@@ -117,7 +117,7 @@ private:
   double tracking_search_range_;
   bool keep_last_rotation_;
   bool is_robot_rotating_on_last_;
-  double action_server_process_rate_;
+  double action_server_process_rate_sec_;
 
   rclcpp::SubscriptionBase::SharedPtr sub_path_;
   rclcpp::SubscriptionBase::SharedPtr sub_path_velocity_;
