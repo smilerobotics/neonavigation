@@ -117,6 +117,7 @@ private:
   double tracking_search_range_;
   bool keep_last_rotation_;
   bool is_robot_rotating_on_last_;
+  double action_server_process_rate_;
 
   rclcpp::SubscriptionBase::SharedPtr sub_path_;
   rclcpp::SubscriptionBase::SharedPtr sub_path_velocity_;
@@ -143,7 +144,6 @@ private:
   using ActionServer = nav2_util::SimpleActionServer<Action>;
   std::unique_ptr<ActionServer> action_server_;
   std::mutex action_server_mutex_;
-  std::condition_variable action_server_cond_;
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
   nav_msgs::msg::Path received_path_;
   int64_t unable_to_follow_path_threshold_;

@@ -130,6 +130,7 @@ void TrackerNode::initialize()
   declare_dynamic_parameter("tracking_search_range", &tracking_search_range_, 1.0);
   declare_dynamic_parameter("initial_tracking_search_range", &initial_tracking_search_range_, 0.0);
   declare_dynamic_parameter("keep_last_rotation", &keep_last_rotation_, false);
+  declare_dynamic_parameter("action_server_process_rate_sec", &action_server_process_rate_sec_, 10.0);
   is_robot_rotating_on_last_ = false;
 
   onDynamicParameterUpdated({});
@@ -457,8 +458,6 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
   status.distance_to_path = tracking_result.distance_from_target;
   pub_status_->publish(status);
   latest_status_ = status;
-
-  action_server_cond_.notify_all();
 }
 
 TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf2::Transform>& robot_to_odom,
@@ -701,23 +700,23 @@ void TrackerNode::computeControl()
         return;
       }
       cbPath(action_server_->get_current_goal()->path);
-      received_path_ = action_server_->get_current_goal()->path;
+      received_path_.header = action_server_->get_current_goal()->path.header;
+      path_.toMsg(received_path_);
     }
-    while (true)
+    rclcpp::Rate rate(action_server_process_rate_sec_);
+    while (rclcpp::ok())
     {
-      std::unique_lock<std::mutex> lock(action_server_mutex_);
-      action_server_cond_.wait_for(lock, std::chrono::milliseconds(100));
-      if (!rclcpp::ok())
       {
-        break;
+        std::unique_lock<std::mutex> lock(action_server_mutex_);
+        if (spinActionServerOnce())
+        {
+          publishZeroVelocity();
+          cbPath(nav_msgs::msg::Path());
+          received_path_ = nav_msgs::msg::Path();
+          break;
+        }
       }
-      if (spinActionServerOnce())
-      {
-        publishZeroVelocity();
-        cbPath(nav_msgs::msg::Path());
-        received_path_ = nav_msgs::msg::Path();
-        break;
-      }
+      rate.sleep();
     }
   }
   catch (std::exception& e)
