@@ -8,15 +8,14 @@
   <license>BSD</license>
   <author email="atsushi.w@ieee.org">Atsushi Watanabe</author>
 
-  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <depend>roscpp</depend>
-  <test_depend>rostest</test_depend>
-  <test_depend>roslint</test_depend>
-
+  <depend>eigen</depend>
   <depend>geometry_msgs</depend>
   <depend>message_filters</depend>
   <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tf2</depend>
@@ -26,5 +25,14 @@
 
   <depend>neonavigation_common</depend>
 
-  <depend>eigen</depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>nav2_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+
 </package>
