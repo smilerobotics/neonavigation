@@ -62,6 +62,7 @@
 #include <trajectory_tracker/eigen_line.h>
 #include <trajectory_tracker/path2d.h>
 #include <trajectory_tracker/basic_control.h>
+#include <trajectory_tracker_msgs/action/follow_path_with_velocity.hpp>
 
 #include "nav2_msgs/action/follow_path.hpp"
 #include "nav2_util/simple_action_server.hpp"
@@ -142,7 +143,10 @@ private:
 
   using Action = nav2_msgs::action::FollowPath;
   using ActionServer = nav2_util::SimpleActionServer<Action>;
-  std::unique_ptr<ActionServer> action_server_;
+  using ActionWithVelocity = trajectory_tracker_msgs::action::FollowPathWithVelocity;
+  using ActionServerWithVelocity = nav2_util::SimpleActionServer<ActionWithVelocity>;
+  std::shared_ptr<ActionServer> action_server_normal_;
+  std::shared_ptr<ActionServerWithVelocity> action_server_with_velocity_;
   std::mutex action_server_mutex_;
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
   nav_msgs::msg::Path received_path_;
@@ -195,8 +199,13 @@ private:
   void control(const tf2::Stamped<tf2::Transform>&, const Eigen::Vector3d&, const double, const double, const double);
   TrackingResult getTrackingResult(const tf2::Stamped<tf2::Transform>&, const Eigen::Vector3d&, const double,
                                    const double) const;
-  void computeControl();
-  bool spinActionServerOnce();
+  bool isControlNeeded() const;
+  template <typename ActionClass>
+  void computeControl(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
+  template <typename ActionClass>
+  bool spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
+  void computeControlNormal();
+  void computeControlWithVelocity();
   void publishZeroVelocity();
   void resetLatestStatus();
 
