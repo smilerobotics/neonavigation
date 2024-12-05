@@ -2,6 +2,220 @@
 Changelog for package trajectory_tracker
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.1 (2024-03-22)
+-------------------
+
+0.17.0 (2023-11-02)
+-------------------
+
+0.16.0 (2023-09-14)
+-------------------
+* planner_cspace: start planning from expected robot pose (`#717 <https://github.com/at-wat/neonavigation/issues/717>`_)
+* Contributors: Naotaka Hatao
+
+0.15.0 (2023-08-30)
+-------------------
+* trajectory_tracker: make trajectory_tracker library (`#713 <https://github.com/at-wat/neonavigation/issues/713>`_)
+* Contributors: Naotaka Hatao
+
+0.14.2 (2023-07-31)
+-------------------
+
+0.14.1 (2023-07-07)
+-------------------
+
+0.14.0 (2023-06-06)
+-------------------
+
+0.13.0 (2023-05-31)
+-------------------
+
+0.12.2 (2023-02-28)
+-------------------
+
+0.12.1 (2023-02-25)
+-------------------
+* trajectory_tracker: relax test conditions (`#674 <https://github.com/at-wat/neonavigation/issues/674>`_)
+* Improve test logs on timeout (`#673 <https://github.com/at-wat/neonavigation/issues/673>`_)
+* trajectory_tracker: throttle tf exception logs (`#670 <https://github.com/at-wat/neonavigation/issues/670>`_)
+* trajectory_tracker: improve test stability (`#667 <https://github.com/at-wat/neonavigation/issues/667>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.0 (2023-01-30)
+-------------------
+
+0.11.8 (2022-12-28)
+-------------------
+
+0.11.7 (2022-08-05)
+-------------------
+* trajectory_tracker: fix prediction_offset of trajectory_tracker (`#644 <https://github.com/at-wat/neonavigation/issues/644>`_)
+* Contributors: Naotaka Hatao
+
+0.11.6 (2022-07-20)
+-------------------
+
+0.11.5 (2022-07-06)
+-------------------
+
+0.11.4 (2022-04-13)
+-------------------
+
+0.11.3 (2021-12-02)
+-------------------
+
+0.11.2 (2021-11-08)
+-------------------
+
+0.11.1 (2021-10-29)
+-------------------
+* trajectory_tracker: increase SwitchBackWithPathUpdate test timeout (`#611 <https://github.com/at-wat/neonavigation/issues/611>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.0 (2021-08-30)
+-------------------
+* trajectory_tracker: add velocity tolerance parameters (`#607 <https://github.com/at-wat/neonavigation/issues/607>`_)
+* Apply clang-format-11 with new setting (`#605 <https://github.com/at-wat/neonavigation/issues/605>`_)
+* Contributors: Naotaka Hatao
+
+0.10.11 (2021-06-21)
+--------------------
+
+0.10.10 (2021-03-18)
+--------------------
+
+0.10.9 (2021-03-16)
+-------------------
+
+0.10.8 (2021-03-10)
+-------------------
+
+0.10.7 (2021-03-07)
+-------------------
+
+0.10.6 (2021-01-28)
+-------------------
+
+0.10.5 (2020-12-24)
+-------------------
+
+0.10.4 (2020-11-12)
+-------------------
+
+0.10.3 (2020-10-22)
+-------------------
+
+0.10.2 (2020-10-07)
+-------------------
+
+0.10.1 (2020-08-26)
+-------------------
+
+0.10.0 (2020-08-06)
+-------------------
+* trajectory_tracker: add a mode to apply the same control method during turning in place (`#513 <https://github.com/at-wat/neonavigation/issues/513>`_)
+* trajectory_tracker: relax test tolerance on tf mode (`#545 <https://github.com/at-wat/neonavigation/issues/545>`_)
+* trajectory_tracker: goal if both raw and predicted pose is in tolerance (`#540 <https://github.com/at-wat/neonavigation/issues/540>`_)
+* trajectory_tracker: fix wrong tracking target just after new path is received (`#537 <https://github.com/at-wat/neonavigation/issues/537>`_)
+* Increase initialization timeout in the tests (`#536 <https://github.com/at-wat/neonavigation/issues/536>`_)
+* trajectory_tracker: add odometry timeout checking (`#534 <https://github.com/at-wat/neonavigation/issues/534>`_)
+* trajectory_tracker: predict odometry by extrapolation (`#529 <https://github.com/at-wat/neonavigation/issues/529>`_)
+* trajectory_tracker: add use_odom option (`#523 <https://github.com/at-wat/neonavigation/issues/523>`_)
+* trajectory_tracker: make trajectory_tracker dynamic-reconfigurable (`#521 <https://github.com/at-wat/neonavigation/issues/521>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.9.1 (2020-07-16)
+------------------
+* trajectory_tracker: fix remained distance calculation on overshoot (`#514 <https://github.com/at-wat/neonavigation/issues/514>`_)
+* Contributors: Atsushi Watanabe
+
+0.9.0 (2020-07-02)
+------------------
+
+0.8.8 (2020-06-15)
+------------------
+
+0.8.7 (2020-05-22)
+------------------
+
+0.8.6 (2020-05-15)
+------------------
+* Fix duplicated tf timestamp (`#494 <https://github.com/at-wat/neonavigation/issues/494>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.5 (2020-05-04)
+------------------
+
+0.8.4 (2020-04-30)
+------------------
+* Clean unused dependencies (`#472 <https://github.com/at-wat/neonavigation/issues/472>`_)
+* trajectory_tracker: add missing dep to std_srvs (`#470 <https://github.com/at-wat/neonavigation/issues/470>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.3 (2020-04-26)
+------------------
+
+0.8.2 (2020-04-07)
+------------------
+* Support Noetic (`#461 <https://github.com/at-wat/neonavigation/issues/461>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.1 (2020-03-12)
+------------------
+
+0.8.0 (2020-03-04)
+------------------
+* Add message package version constraints (`#443 <https://github.com/at-wat/neonavigation/issues/443>`_)
+* trajectory_tracker: check path timestamps in tests (`#441 <https://github.com/at-wat/neonavigation/issues/441>`_)
+* trajectory_tracker: add path header to TrajectoryTrackerStatus (`#439 <https://github.com/at-wat/neonavigation/issues/439>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.7.0 (2020-02-04)
+------------------
+* trajectory_tracker: calculate correct curvature at the end of path (`#435 <https://github.com/at-wat/neonavigation/issues/435>`_)
+* trajectory_tracker: fix test initialization timeout (`#432 <https://github.com/at-wat/neonavigation/issues/432>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.6.0 (2020-01-18)
+------------------
+* trajectory_tracker: add a service to clear recorded path (`#422 <https://github.com/at-wat/neonavigation/issues/422>`_)
+* Contributors: Naotaka Hatao
+
+0.5.1 (2020-01-06)
+------------------
+* Migrate from C math functions to C++ (`#407 <https://github.com/at-wat/neonavigation/issues/407>`_)
+* trajectory_tracker: fix test stability (`#405 <https://github.com/at-wat/neonavigation/issues/405>`_)
+* Contributors: Atsushi Watanabe
+
+0.5.0 (2019-10-21)
+------------------
+* trajectory_tracker: track interpolated rotation (`#394 <https://github.com/at-wat/neonavigation/issues/394>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.3 (2019-09-10)
+------------------
+
+0.4.2 (2019-08-19)
+------------------
+
+0.4.1 (2019-08-15)
+------------------
+* trajectory_tracker: update demo params (`#352 <https://github.com/at-wat/neonavigation/issues/352>`_)
+* Drop ROS Indigo and Ubuntu Trusty support (`#310 <https://github.com/at-wat/neonavigation/issues/310>`_)
+* planner_cspace: calculate path hysteresis in 3-DOF space (`#304 <https://github.com/at-wat/neonavigation/issues/304>`_)
+* Fix include directory priority (`#308 <https://github.com/at-wat/neonavigation/issues/308>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.0 (2019-05-09)
+------------------
+* trajectory_tracker: speed up simulation on rostest (`#280 <https://github.com/at-wat/neonavigation/issues/280>`_)
+* trajectory_tracker: linear velocity adaptive gain control (`#276 <https://github.com/at-wat/neonavigation/issues/276>`_)
+* trajectory_tracker: remove unused parameters (`#274 <https://github.com/at-wat/neonavigation/issues/274>`_)
+* trajectory_tracker: fix remained distance for path with two poses (`#272 <https://github.com/at-wat/neonavigation/issues/272>`_)
+* Add LICENSE file (`#270 <https://github.com/at-wat/neonavigation/issues/270>`_)
+* Support melodic (`#266 <https://github.com/at-wat/neonavigation/issues/266>`_)
+* Contributors: Atsushi Watanabe, Yuta Koga
+
 0.3.1 (2019-01-10)
 ------------------
 * trajectory_tracker: fix test timeout for path with velocity (`#263 <https://github.com/at-wat/neonavigation/issues/263>`_)

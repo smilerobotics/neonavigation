@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -27,10 +27,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <ros/ros.h>
+#include "rclcpp/rclcpp.hpp"
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <nav_msgs/Path.h>
+#include <nav_msgs/msg/path.hpp>
+#include <std_srvs/srv/empty.hpp>
 
 #include <algorithm>
 #include <string>
@@ -39,42 +40,44 @@
 
 TEST(TrajectoryRecorder, TfToPath)
 {
-  ros::NodeHandle nh("");
+  rclcpp::Node nh("");
 
-  nav_msgs::Path::ConstPtr path;
-  const boost::function<void(const nav_msgs::Path::ConstPtr&)> cb_path =
-      [&path](const nav_msgs::Path::ConstPtr& msg) -> void
+  nav_msgs::msg::Path::ConstSharedPtr path;
+  int received_count = 0;
+  const std::function<void(const nav_msgs::msg::Path::ConstSharedPtr&)> cb_path =
+      [&path, &received_count](const nav_msgs::msg::Path::ConstSharedPtr& msg) -> void
   {
+    ++received_count;
     path = msg;
   };
-  ros::Subscriber sub_path = nh.subscribe("path", 1, cb_path);
+  auto sub_path = nh.subscribe("path", 1, cb_path);
   tf2_ros::TransformBroadcaster tfb;
 
   const tf2::Transform points[] =
       {
-        tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(0, 0, 0)),
-        tf2::Transform(tf2::Quaternion(0, 0, 1, 0), tf2::Vector3(2, 0, 0)),
-        tf2::Transform(tf2::Quaternion(0, 0, 0, -1), tf2::Vector3(3, 5, 0)),
-        tf2::Transform(tf2::Quaternion(0, 0, -1, 0), tf2::Vector3(-1, 5, 1))
+          tf2::Transform(tf2::Quaternion(0, 0, 0, 1), tf2::Vector3(0, 0, 0)),
+          tf2::Transform(tf2::Quaternion(0, 0, 1, 0), tf2::Vector3(2, 0, 0)),
+          tf2::Transform(tf2::Quaternion(0, 0, 0, -1), tf2::Vector3(3, 5, 0)),
+          tf2::Transform(tf2::Quaternion(0, 0, -1, 0), tf2::Vector3(-1, 5, 1)),
       };
   const size_t len = sizeof(points) / sizeof(tf2::Transform);
 
-  ros::Duration(1.0).sleep();
+  rclcpp::Duration(1.0).sleep();
   for (auto& p : points)
   {
     for (size_t i = 0; i < 3; ++i)
     {
-      geometry_msgs::TransformStamped trans =
+      geometry_msgs::msg::TransformStamped trans =
           tf2::toMsg(tf2::Stamped<tf2::Transform>(
-              p, ros::Time::now() + ros::Duration(0.1), "map"));
+              p, rclcpp::Time::now() + rclcpp::Duration(0.1), "map"));
       trans.child_frame_id = "base_link";
       tfb.sendTransform(trans);
-      ros::Duration(0.1).sleep();
+      rclcpp::Duration(0.1).sleep();
     }
   }
-  ros::spinOnce();
+  rclcpp::spin_some(node);
   ASSERT_TRUE(static_cast<bool>(path));
-  sub_path.shutdown();
+  ASSERT_EQ(received_count, 1);
 
   ASSERT_EQ(path->poses.size(), len);
   for (size_t i = 0; i < len; ++i)
@@ -87,12 +90,31 @@ TEST(TrajectoryRecorder, TfToPath)
     ASSERT_EQ(path->poses[i].pose.orientation.z, points[i].getRotation().z());
     ASSERT_EQ(path->poses[i].pose.orientation.w, points[i].getRotation().w());
   }
+
+  ros::ServiceClient client = nh.serviceClient<std_srvs::srv::Empty>("/trajectory_recorder/clear_path");
+  std_srvs::srv::Empty empty;
+  ASSERT_TRUE(client.call(empty));
+
+  while (received_count != 2)
+  {
+    rclcpp::spin_some(node);
+    rclcpp::Duration(0.1).sleep();
+  }
+  ASSERT_EQ(static_cast<int>(path->poses.size()), 1);
+  ASSERT_EQ(path->poses.back().pose.position.x, points[len - 1].getOrigin().x());
+  ASSERT_EQ(path->poses.back().pose.position.y, points[len - 1].getOrigin().y());
+  ASSERT_EQ(path->poses.back().pose.position.z, points[len - 1].getOrigin().z());
+  ASSERT_EQ(path->poses.back().pose.orientation.x, points[len - 1].getRotation().x());
+  ASSERT_EQ(path->poses.back().pose.orientation.y, points[len - 1].getRotation().y());
+  ASSERT_EQ(path->poses.back().pose.orientation.z, points[len - 1].getRotation().z());
+  ASSERT_EQ(path->poses.back().pose.orientation.w, points[len - 1].getRotation().w());
 }
 
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
-  ros::init(argc, argv, "test_trajectory_recorder");
+  rclcpp::init(argc, argv);
+  auto node = rclcpp::Node::make_shared("test_trajectory_recorder");
 
   return RUN_ALL_TESTS();
 }

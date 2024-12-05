@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -27,41 +27,46 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <costmap_cspace_msgs/MapMetaData3D.h>
-
+#include <cmath>
 #include <cstddef>
+
+#include <planner_cspace/cyclic_vec.h>
+#include <planner_cspace/blockmem_gridmap.h>
+#include <planner_cspace/planner_3d/motion_cache.h>
 
 #include <gtest/gtest.h>
 
-#include <planner_cspace/cyclic_vec.h>
-#include <planner_cspace/planner_3d/motion_cache.h>
-
+namespace planner_cspace
+{
+namespace planner_3d
+{
 TEST(MotionCache, Generate)
 {
   const int range = 4;
-  costmap_cspace_msgs::MapMetaData3D map_info;
-  map_info.angle = 4;
-  map_info.angular_resolution = M_PI * 2 / map_info.angle;
-  map_info.linear_resolution = 0.5;
+  const int angle = 4;
+  const float angular_resolution = M_PI * 2 / angle;
+  const float linear_resolution = 0.5;
 
-  BlockMemGridmap<char, 3, 2, 0x20> gm_;
-  MotionCache<CyclicVecInt<3, 2>, CyclicVecFloat<3, 2>> cache(map_info, range, gm_);
+  BlockMemGridmap<char, 3, 2, 0x20> gm;
+  MotionCache cache;
+  cache.reset(
+      linear_resolution, angular_resolution, range,
+      gm.getAddressor(), 0.5, 0.1);
 
   // Straight motions
   const int xy_yaw_straight[][3] =
       {
-        { 1, 0, 0 },
-        { 0, 1, 1 },
-        { -1, 0, 2 },
-        { 0, -1, 3 },
+          {1, 0, 0},
+          {0, 1, 1},
+          {-1, 0, 2},
+          {0, -1, 3},
       };
   for (auto& xy_yaw : xy_yaw_straight)
   {
     for (int i = 1; i <= range + 1; ++i)
     {
-      // FIXME(at-wat): remove NOLINT after clang-format or roslint supports it
       const CyclicVecInt<3, 2> goal(
-          { i * xy_yaw[0], i * xy_yaw[1], xy_yaw[2] });  // NOLINT(whitespace/braces)
+          i * xy_yaw[0], i * xy_yaw[1], xy_yaw[2]);
       const auto c = cache.find(xy_yaw[2], goal);
       if (i > range)
       {
@@ -89,24 +94,23 @@ TEST(MotionCache, Generate)
   // 90 deg rotation
   const int xy_syaw_gyaw_90[][4] =
       {
-        { 1, 1, 0, 1 },
-        { -1, 1, 1, 2 },
-        { -1, -1, 2, 3 },
-        { 1, -1, 3, 0 },
-        { 1, -1, 0, 3 },
-        { 1, 1, 1, 0 },
-        { -1, 1, 2, 1 },
-        { -1, -1, 3, 2 },
+          {1, 1, 0, 1},
+          {-1, 1, 1, 2},
+          {-1, -1, 2, 3},
+          {1, -1, 3, 0},
+          {1, -1, 0, 3},
+          {1, 1, 1, 0},
+          {-1, 1, 2, 1},
+          {-1, -1, 3, 2},
       };
   for (auto& xy_syaw_gyaw : xy_syaw_gyaw_90)
   {
     for (int i = 1; i <= range + 1; ++i)
     {
-      // FIXME(at-wat): remove NOLINT after clang-format or roslint supports it
       const CyclicVecInt<3, 2> goal(
-          { i * xy_syaw_gyaw[0], i * xy_syaw_gyaw[1], xy_syaw_gyaw[3] });  // NOLINT(whitespace/braces)
+          i * xy_syaw_gyaw[0], i * xy_syaw_gyaw[1], xy_syaw_gyaw[3]);
       const auto c = cache.find(xy_syaw_gyaw[2], goal);
-      if (i * sqrt(2) >= range)
+      if (i * std::sqrt(2.0) >= range)
       {
         ASSERT_EQ(c, cache.end(xy_syaw_gyaw[2]));
         continue;
@@ -125,6 +129,8 @@ TEST(MotionCache, Generate)
     }
   }
 }
+}  // namespace planner_3d
+}  // namespace planner_cspace
 
 int main(int argc, char** argv)
 {

@@ -2,6 +2,206 @@
 Changelog for package safety_limiter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.1 (2024-03-22)
+-------------------
+
+0.17.0 (2023-11-02)
+-------------------
+
+0.16.0 (2023-09-14)
+-------------------
+
+0.15.0 (2023-08-30)
+-------------------
+
+0.14.2 (2023-07-31)
+-------------------
+
+0.14.1 (2023-07-07)
+-------------------
+
+0.14.0 (2023-06-06)
+-------------------
+
+0.13.0 (2023-05-31)
+-------------------
+
+0.12.2 (2023-02-28)
+-------------------
+
+0.12.1 (2023-02-25)
+-------------------
+* safety_limiter: update config to stabilize simulation test (`#668 <https://github.com/at-wat/neonavigation/issues/668>`_)
+* safety_limiter: fix flaky simulation tests (`#664 <https://github.com/at-wat/neonavigation/issues/664>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.0 (2023-01-30)
+-------------------
+
+0.11.8 (2022-12-28)
+-------------------
+* safety_limiter: make sure to keep margin from obstacles (`#654 <https://github.com/at-wat/neonavigation/issues/654>`_)
+* Contributors: Kazuki Takahashi
+
+0.11.7 (2022-08-05)
+-------------------
+* safety_limiter: enable omni-directional safety brake (`#646 <https://github.com/at-wat/neonavigation/issues/646>`_)
+* Contributors: Naotaka Hatao
+
+0.11.6 (2022-07-20)
+-------------------
+
+0.11.5 (2022-07-06)
+-------------------
+
+0.11.4 (2022-04-13)
+-------------------
+
+0.11.3 (2021-12-02)
+-------------------
+* Fix flaky tests and add debug outputs (`#628 <https://github.com/at-wat/neonavigation/issues/628>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.2 (2021-11-08)
+-------------------
+
+0.11.1 (2021-10-29)
+-------------------
+
+0.11.0 (2021-08-30)
+-------------------
+* Apply clang-format-11 with new setting (`#605 <https://github.com/at-wat/neonavigation/issues/605>`_)
+* Contributors: Naotaka Hatao
+
+0.10.11 (2021-06-21)
+--------------------
+
+0.10.10 (2021-03-18)
+--------------------
+
+0.10.9 (2021-03-16)
+-------------------
+
+0.10.8 (2021-03-10)
+-------------------
+
+0.10.7 (2021-03-07)
+-------------------
+* safety_limiter: add a max_linear_vel and max_angular_vel (`#581 <https://github.com/at-wat/neonavigation/issues/581>`_)
+* Contributors: Teo Cardoso
+
+0.10.6 (2021-01-28)
+-------------------
+
+0.10.5 (2020-12-24)
+-------------------
+
+0.10.4 (2020-11-12)
+-------------------
+
+0.10.3 (2020-10-22)
+-------------------
+
+0.10.2 (2020-10-07)
+-------------------
+
+0.10.1 (2020-08-26)
+-------------------
+
+0.10.0 (2020-08-06)
+-------------------
+* Merge rostest coverage profiles (`#520 <https://github.com/at-wat/neonavigation/issues/520>`_)
+* Contributors: Atsushi Watanabe
+
+0.9.1 (2020-07-16)
+------------------
+
+0.9.0 (2020-07-02)
+------------------
+* safety_limiter: make safety_limiter dynamic-reconfigurable (`#509 <https://github.com/at-wat/neonavigation/issues/509>`_)
+* Contributors: Naotaka Hatao
+
+0.8.8 (2020-06-15)
+------------------
+
+0.8.7 (2020-05-22)
+------------------
+* [Noetic] Add missing includes and libraries (`#497 <https://github.com/at-wat/neonavigation/issues/497>`_)
+* Contributors: Shane Loretz
+
+0.8.6 (2020-05-15)
+------------------
+
+0.8.5 (2020-05-04)
+------------------
+* Revert "Remove old workaround for debian stretch build (`#473 <https://github.com/at-wat/neonavigation/issues/473>`_)" (`#478 <https://github.com/at-wat/neonavigation/issues/478>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.4 (2020-04-30)
+------------------
+* Remove old workaround for debian stretch build (`#473 <https://github.com/at-wat/neonavigation/issues/473>`_)
+* Clean unused dependencies (`#472 <https://github.com/at-wat/neonavigation/issues/472>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.3 (2020-04-26)
+------------------
+
+0.8.2 (2020-04-07)
+------------------
+* Support Noetic (`#461 <https://github.com/at-wat/neonavigation/issues/461>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.1 (2020-03-12)
+------------------
+
+0.8.0 (2020-03-04)
+------------------
+
+0.7.0 (2020-02-04)
+------------------
+
+0.6.0 (2020-01-18)
+------------------
+* safety_limiter: use fixed frame for accumulating input cloud (`#421 <https://github.com/at-wat/neonavigation/issues/421>`_)
+* Contributors: Yuta Koga
+
+0.5.1 (2020-01-06)
+------------------
+* safety_limiter: fix test stability (`#411 <https://github.com/at-wat/neonavigation/issues/411>`_)
+* Migrate from C math functions to C++ (`#407 <https://github.com/at-wat/neonavigation/issues/407>`_)
+* safety_limiter: fix test stability (`#406 <https://github.com/at-wat/neonavigation/issues/406>`_)
+* Contributors: Atsushi Watanabe
+
+0.5.0 (2019-10-21)
+------------------
+* safety_limiter: remove debug output (`#385 <https://github.com/at-wat/neonavigation/issues/385>`_)
+* safety_limiter: status broadcasting from safety_limiter node (`#383 <https://github.com/at-wat/neonavigation/issues/383>`_)
+* Contributors: Atsushi Watanabe, Daiki Maekawa
+
+0.4.3 (2019-09-10)
+------------------
+* safety_limiter: fix diagnostics warning condition (`#374 <https://github.com/at-wat/neonavigation/issues/374>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.2 (2019-08-19)
+------------------
+
+0.4.1 (2019-08-15)
+------------------
+* safety_limiter: increase simulation test publish rate (`#320 <https://github.com/at-wat/neonavigation/issues/320>`_)
+* safety_limiter: add simulation test conditions for backward motion (`#319 <https://github.com/at-wat/neonavigation/issues/319>`_)
+* safety_limiter: add delay compensation (`#316 <https://github.com/at-wat/neonavigation/issues/316>`_)
+* safety_limiter: fix footprint radius calculation (`#317 <https://github.com/at-wat/neonavigation/issues/317>`_)
+* Drop ROS Indigo and Ubuntu Trusty support (`#310 <https://github.com/at-wat/neonavigation/issues/310>`_)
+* Contributors: Atsushi Watanabe, Yuta Koga
+
+0.4.0 (2019-05-09)
+------------------
+* safety_limiter: fix backward motion limit (`#292 <https://github.com/at-wat/neonavigation/issues/292>`_)
+* safety_limiter: fix CloudBuffering test start timing (`#279 <https://github.com/at-wat/neonavigation/issues/279>`_)
+* Fix package dependencies (`#268 <https://github.com/at-wat/neonavigation/issues/268>`_)
+* Contributors: Atsushi Watanabe, Yuta Koga
+
 0.3.1 (2019-01-10)
 ------------------
 * safety_limiter: increase tolerance of the test (`#243 <https://github.com/at-wat/neonavigation/issues/243>`_)

@@ -2,6 +2,178 @@
 Changelog for package neonavigation_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.1 (2024-03-22)
+-------------------
+
+0.17.0 (2023-11-02)
+-------------------
+
+0.16.0 (2023-09-14)
+-------------------
+
+0.15.0 (2023-08-30)
+-------------------
+
+0.14.2 (2023-07-31)
+-------------------
+
+0.14.1 (2023-07-07)
+-------------------
+
+0.14.0 (2023-06-06)
+-------------------
+
+0.13.0 (2023-05-31)
+-------------------
+* neonavigation_launch: revert unintended change to demo config (`#699 <https://github.com/at-wat/neonavigation/issues/699>`_)
+* planner_cspace: fix fast map update (`#692 <https://github.com/at-wat/neonavigation/issues/692>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.2 (2023-02-28)
+-------------------
+
+0.12.1 (2023-02-25)
+-------------------
+
+0.12.0 (2023-01-30)
+-------------------
+
+0.11.8 (2022-12-28)
+-------------------
+
+0.11.7 (2022-08-05)
+-------------------
+
+0.11.6 (2022-07-20)
+-------------------
+
+0.11.5 (2022-07-06)
+-------------------
+
+0.11.4 (2022-04-13)
+-------------------
+
+0.11.3 (2021-12-02)
+-------------------
+
+0.11.2 (2021-11-08)
+-------------------
+
+0.11.1 (2021-10-29)
+-------------------
+
+0.11.0 (2021-08-30)
+-------------------
+
+0.10.11 (2021-06-21)
+--------------------
+
+0.10.10 (2021-03-18)
+--------------------
+
+0.10.9 (2021-03-16)
+-------------------
+* neonavigation_launch: add isolated room to demo map (`#591 <https://github.com/at-wat/neonavigation/issues/591>`_)
+* Contributors: Atsushi Watanabe
+
+0.10.8 (2021-03-10)
+-------------------
+
+0.10.7 (2021-03-07)
+-------------------
+
+0.10.6 (2021-01-28)
+-------------------
+
+0.10.5 (2020-12-24)
+-------------------
+
+0.10.4 (2020-11-12)
+-------------------
+
+0.10.3 (2020-10-22)
+-------------------
+
+0.10.2 (2020-10-07)
+-------------------
+
+0.10.1 (2020-08-26)
+-------------------
+
+0.10.0 (2020-08-06)
+-------------------
+
+0.9.1 (2020-07-16)
+------------------
+
+0.9.0 (2020-07-02)
+------------------
+
+0.8.8 (2020-06-15)
+------------------
+
+0.8.7 (2020-05-22)
+------------------
+
+0.8.6 (2020-05-15)
+------------------
+* neonavigation_launch: revert exec_depend to trajectory_tracker_rviz_plugins (`#491 <https://github.com/at-wat/neonavigation/issues/491>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.5 (2020-05-04)
+------------------
+
+0.8.4 (2020-04-30)
+------------------
+
+0.8.3 (2020-04-26)
+------------------
+* Add CI jobs for Noetic (`#462 <https://github.com/at-wat/neonavigation/issues/462>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.2 (2020-04-07)
+------------------
+* Support Noetic (`#461 <https://github.com/at-wat/neonavigation/issues/461>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.1 (2020-03-12)
+------------------
+
+0.8.0 (2020-03-04)
+------------------
+
+0.7.0 (2020-02-04)
+------------------
+
+0.6.0 (2020-01-18)
+------------------
+
+0.5.1 (2020-01-06)
+------------------
+
+0.5.0 (2019-10-21)
+------------------
+* planner_cspace: publish internally used maps as OccupancyGrid (`#396 <https://github.com/at-wat/neonavigation/issues/396>`_)
+* costmap_cspace: fix unknown handling (`#392 <https://github.com/at-wat/neonavigation/issues/392>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.3 (2019-09-10)
+------------------
+
+0.4.2 (2019-08-19)
+------------------
+
+0.4.1 (2019-08-15)
+------------------
+* trajectory_tracker: update demo params (`#352 <https://github.com/at-wat/neonavigation/issues/352>`_)
+* Drop ROS Indigo and Ubuntu Trusty support (`#310 <https://github.com/at-wat/neonavigation/issues/310>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.0 (2019-05-09)
+------------------
+* trajectory_tracker: remove unused parameters (`#274 <https://github.com/at-wat/neonavigation/issues/274>`_)
+* Contributors: Yuta Koga
+
 0.3.1 (2019-01-10)
 ------------------
 * neonavigation_launch: add dependency to trajectory_tracker_rviz_plugins (`#259 <https://github.com/at-wat/neonavigation/issues/259>`_)

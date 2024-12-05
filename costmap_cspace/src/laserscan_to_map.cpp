@@ -36,9 +36,10 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
+#include <limits>
 #include <string>
 
-#include <costmap_cspace/pointcloud_accumulator/accumulator.h>
+#include <costmap_cspace/pointcloud_accumulator.h>
 #include <neonavigation_common/compatibility.h>
 
 class LaserscanToMapNode
@@ -65,7 +66,7 @@ private:
   float origin_x_;
   float origin_y_;
 
-  PointcloudAccumurator<sensor_msgs::PointCloud2> accum_;
+  costmap_cspace::PointcloudAccumulator<sensor_msgs::PointCloud2> accum_;
 
 public:
   LaserscanToMapNode()
@@ -74,8 +75,8 @@ public:
     , tfl_(tfbuf_)
   {
     neonavigation_common::compat::checkCompatMode();
-    pnh_.param("z_min", z_min_, 0.1);
-    pnh_.param("z_max", z_max_, 1.0);
+    pnh_.param("z_min", z_min_, std::numeric_limits<double>::lowest());
+    pnh_.param("z_max", z_max_, std::numeric_limits<double>::max());
     pnh_.param("global_frame", global_frame_, std::string("map"));
     pnh_.param("robot_frame", robot_frame_, std::string("base_link"));
 
@@ -121,7 +122,7 @@ private:
     {
       ROS_WARN("%s", e.what());
     }
-    accum_.push(PointcloudAccumurator<sensor_msgs::PointCloud2>::Points(
+    accum_.push(costmap_cspace::PointcloudAccumurator<sensor_msgs::PointCloud2>::Points(
         cloud_global, cloud_global.header.stamp));
 
     ros::Time now = scan->header.stamp;
@@ -129,6 +130,7 @@ private:
       return;
     published_ = now;
 
+    float robot_z;
     try
     {
       tf2::Stamped<tf2::Transform> trans;
@@ -143,6 +145,7 @@ private:
       map.info.origin.orientation.w = 1.0;
       origin_x_ = x - width_ * map.info.resolution * 0.5;
       origin_y_ = y - height_ * map.info.resolution * 0.5;
+      robot_z = pos.z();
     }
     catch (tf2::TransformException& e)
     {
@@ -156,8 +159,11 @@ private:
     {
       auto itr_x = sensor_msgs::PointCloud2ConstIterator<float>(pc, "x");
       auto itr_y = sensor_msgs::PointCloud2ConstIterator<float>(pc, "y");
+      auto itr_z = sensor_msgs::PointCloud2ConstIterator<float>(pc, "z");
       for (; itr_x != itr_x.end(); ++itr_x, ++itr_y)
       {
+        if (*itr_z - robot_z < z_min_ || z_max_ < *itr_z - robot_z)
+          continue;
         unsigned int x = int(
             (*itr_x - map.info.origin.position.x) / map.info.resolution);
         unsigned int y = int(

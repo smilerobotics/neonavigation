@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2018, the neonavigation authors
+ * Copyright (c) 2014-2019, the neonavigation authors
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,18 +30,19 @@
 #ifndef COSTMAP_CSPACE_COSTMAP_3D_LAYER_FOOTPRINT_H
 #define COSTMAP_CSPACE_COSTMAP_3D_LAYER_FOOTPRINT_H
 
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <vector>
+
 #include <ros/ros.h>
 
-#include <geometry_msgs/PolygonStamped.h>
-#include <nav_msgs/OccupancyGrid.h>
 #include <costmap_cspace_msgs/CSpace3D.h>
 #include <costmap_cspace_msgs/CSpace3DUpdate.h>
+#include <geometry_msgs/PolygonStamped.h>
+#include <nav_msgs/OccupancyGrid.h>
 
-#if ROS_DISTRO_indigo
-#include <XmlRpcValue.h>
-#else
 #include <xmlrpcpp/XmlRpcValue.h>
-#endif
 
 #include <costmap_cspace/costmap_3d_layer/base.h>
 #include <costmap_cspace/cspace3_cache.h>
@@ -59,36 +60,58 @@ protected:
   geometry_msgs::PolygonStamped footprint_;
   float linear_expand_;
   float linear_spread_;
+  int linear_spread_min_cost_;
   Polygon footprint_p_;
+  bool keep_unknown_;
 
   CSpace3Cache cs_template_;
+  struct Rect
+  {
+    int x_min, x_max, y_min, y_max;
+  };
   int range_max_;
+  std::vector<bool> unknown_buf_;
 
 public:
   Costmap3dLayerFootprint()
     : linear_expand_(0.0)
     , linear_spread_(0.0)
+    , linear_spread_min_cost_(0)
+    , keep_unknown_(false)
     , range_max_(0)
   {
   }
   void loadConfig(XmlRpc::XmlRpcValue config)
   {
+    const int linear_spread_min_cost =
+        config.hasMember("linear_spread_min_cost") ? static_cast<int>(config["linear_spread_min_cost"]) : 0;
     setExpansion(
         static_cast<double>(config["linear_expand"]),
-        static_cast<double>(config["linear_spread"]));
+        static_cast<double>(config["linear_spread"]),
+        linear_spread_min_cost);
     setFootprint(costmap_cspace::Polygon(config["footprint"]));
+    if (config.hasMember("keep_unknown"))
+      setKeepUnknown(config["keep_unknown"]);
+  }
+  void setKeepUnknown(const bool keep_unknown)
+  {
+    keep_unknown_ = keep_unknown;
   }
   void setExpansion(
       const float linear_expand,
-      const float linear_spread)
+      const float linear_spread,
+      const int linear_spread_min_cost = 0)
   {
     linear_expand_ = linear_expand;
     linear_spread_ = linear_spread;
+    linear_spread_min_cost_ = linear_spread_min_cost;
 
     ROS_ASSERT(linear_expand >= 0.0);
     ROS_ASSERT(std::isfinite(linear_expand));
     ROS_ASSERT(linear_spread >= 0.0);
     ROS_ASSERT(std::isfinite(linear_spread));
+    ROS_ASSERT(linear_spread_min_cost_ >= 0);
+    ROS_ASSERT(linear_spread_min_cost_ < 100);
   }
   void setFootprint(const Polygon footprint)
   {
@@ -121,9 +144,10 @@ public:
     ROS_ASSERT(footprint_p_.v.size() > 2);
 
     range_max_ =
-        ceilf((footprint_radius_ + linear_expand_ + linear_spread_) / info.linear_resolution);
+        std::ceil((footprint_radius_ + linear_expand_ + linear_spread_) / info.linear_resolution);
     cs_template_.reset(range_max_, range_max_, info.angle);
 
+    const float eps = info.linear_resolution / 100.0;
     // C-Space template
     for (size_t yaw = 0; yaw < info.angle; yaw++)
     {
@@ -151,7 +175,11 @@ public:
             }
             else if (d < linear_expand_ + linear_spread_)
             {
-              cs_template_.e(x, y, yaw) = 100 - (d - linear_expand_) * 100 / linear_spread_;
+              cs_template_.e(x, y, yaw) = 100 - (d - linear_expand_) * (100 - linear_spread_min_cost_) / linear_spread_;
+            }
+            else if (std::abs(linear_expand_ + linear_spread_ - d) < eps)
+            {
+              cs_template_.e(x, y, yaw) = linear_spread_min_cost_;
             }
             else
             {
@@ -175,91 +203,166 @@ protected:
       const UpdatedRegion& region)
   {
     if (root_)
-      gemerateCSpace(map_, map, region);
+      generateCSpace(map_, map, region);
     else
-      gemerateCSpace(map_overlay_, map, region);
+      generateCSpace(map_overlay_, map, region);
   }
-  void gemerateCSpace(
+  virtual void generateCSpace(
       CSpace3DMsg::Ptr map,
       const nav_msgs::OccupancyGrid::ConstPtr& msg,
       const UpdatedRegion& region)
   {
     ROS_ASSERT(ang_grid_ > 0);
-    const int ox =
-        lroundf((msg->info.origin.position.x - map->info.origin.position.x) /
-                map->info.linear_resolution);
-    const int oy =
-        lroundf((msg->info.origin.position.y - map->info.origin.position.y) /
-                map->info.linear_resolution);
-    // Clear travelable area in OVERWRITE mode
-    if (overlay_mode_ == OVERWRITE && !root_)
+    clearTravelableArea(map, msg);
+    for (size_t yaw = 0; yaw < map->info.angle; yaw++)
     {
-      for (size_t yaw = 0; yaw < map->info.angle; yaw++)
+      generateSpecifiedCSpace(map, msg, yaw);
+    }
+  }
+
+  // Clear travelable area in OVERWRITE mode
+  void clearTravelableArea(
+      CSpace3DMsg::Ptr map,
+      const nav_msgs::OccupancyGrid::ConstPtr& msg)
+  {
+    if (overlay_mode_ != OVERWRITE || root_)
+    {
+      return;
+    }
+    const int ox =
+        std::lround((msg->info.origin.position.x - map->info.origin.position.x) /
+                    map->info.linear_resolution);
+    const int oy =
+        std::lround((msg->info.origin.position.y - map->info.origin.position.y) /
+                    map->info.linear_resolution);
+    const double resolution_scale = msg->info.resolution / map->info.linear_resolution;
+
+    for (size_t yaw = 0; yaw < map->info.angle; yaw++)
+    {
+      for (size_t i = 0; i < msg->data.size(); i++)
       {
-        for (unsigned int i = 0; i < msg->data.size(); i++)
+        const auto& val = msg->data[i];
+        if (val < 0)
+          continue;
+
+        const int x = std::lround((i % msg->info.width) * resolution_scale);
+        if (x < range_max_ || static_cast<int>(msg->info.width) - range_max_ <= x)
+          continue;
+        const int y = std::lround((i / msg->info.width) * resolution_scale);
+        if (y < range_max_ || static_cast<int>(msg->info.height) - range_max_ <= y)
+          continue;
+
+        const int res_up = std::ceil(resolution_scale);
+        for (int yp = 0; yp < res_up; yp++)
         {
-          const auto& val = msg->data[i];
-          if (val < 0)
+          const int y2 = y + oy + yp;
+          if (static_cast<size_t>(y2) >= map->info.height)
             continue;
-
-          const int x =
-              lroundf((i % msg->info.width) * msg->info.resolution / map->info.linear_resolution);
-          if (x < range_max_ || static_cast<int>(msg->info.width) - range_max_ <= x)
-            continue;
-          const int y =
-              lroundf((i / msg->info.width) * msg->info.resolution / map->info.linear_resolution);
-          if (y < range_max_ || static_cast<int>(msg->info.height) - range_max_ <= y)
-            continue;
-
-          const int res_up = ceilf(msg->info.resolution / map->info.linear_resolution);
-          for (int yp = 0; yp < res_up; yp++)
+          for (int xp = 0; xp < res_up; xp++)
           {
-            for (int xp = 0; xp < res_up; xp++)
-            {
-              const int x2 = x + ox + xp;
-              const int y2 = y + oy + yp;
-              if (static_cast<unsigned int>(x2) >= map->info.width ||
-                  static_cast<unsigned int>(y2) >= map->info.height)
-                continue;
+            const int x2 = x + ox + xp;
+            if (static_cast<size_t>(x2) >= map->info.width)
+              continue;
 
-              auto& m = map->getCost(x2, y2, yaw);
-              m = 0;
-            }
+            map->getCost(x2, y2, yaw) = -1;
           }
         }
       }
     }
-    // Get max
-    for (size_t yaw = 0; yaw < map->info.angle; yaw++)
+  }
+
+  void generateSpecifiedCSpace(
+      CSpace3DMsg::Ptr map,
+      const nav_msgs::OccupancyGrid::ConstPtr& msg,
+      const size_t yaw)
+  {
+    const auto getMaskedRange = [this, msg](const int pos, Rect& result)
     {
-      for (unsigned int i = 0; i < msg->data.size(); i++)
+      const int gx = pos % msg->info.width;
+      const int gy = pos / msg->info.width;
+      const int8_t* const ptr = msg->data.data() + pos;
+      result.x_min = (gx == 0 || (*(ptr - 1) >= *ptr)) ? 0 : -range_max_;
+      result.x_max = (gx == static_cast<int>(msg->info.width) - 1 || (*(ptr + 1) >= *ptr)) ? 0 : range_max_;
+      result.y_min = (gy == 0 || (*(ptr - msg->info.width) >= *ptr)) ? 0 : -range_max_;
+      result.y_max =
+          (gy == static_cast<int>(msg->info.height) - 1 || (*(ptr + msg->info.width) >= *ptr)) ? 0 : range_max_;
+    };
+    const auto getRange = (msg->info.resolution == map->info.linear_resolution) ?
+                              getMaskedRange :
+                              std::function<void(const int, Rect&)>([](const int, Rect&) {});
+
+    const int ox =
+        std::lround((msg->info.origin.position.x - map->info.origin.position.x) / map->info.linear_resolution);
+    const int oy =
+        std::lround((msg->info.origin.position.y - map->info.origin.position.y) / map->info.linear_resolution);
+    const double resolution_scale = msg->info.resolution / map->info.linear_resolution;
+    if (keep_unknown_)
+    {
+      unknown_buf_.resize(msg->data.size());
+      for (size_t i = 0; i < msg->data.size(); i++)
       {
-        const int gx = lroundf((i % msg->info.width) * msg->info.resolution / map->info.linear_resolution) + ox;
-        const int gy = lroundf((i / msg->info.width) * msg->info.resolution / map->info.linear_resolution) + oy;
-        if ((unsigned int)gx >= map->info.width ||
-            (unsigned int)gy >= map->info.height)
+        const int gx = std::lround((i % msg->info.width) * resolution_scale) + ox;
+        const int gy = std::lround((i / msg->info.width) * resolution_scale) + oy;
+        if (static_cast<size_t>(gx) >= map->info.width ||
+            static_cast<size_t>(gy) >= map->info.height)
           continue;
-
-        auto val = msg->data[i];
-        if (val <= 0)
-          continue;
-
-        for (int y = -range_max_; y <= range_max_; y++)
+        // If the cell is unknown in parent map and also updated map,
+        // the cell is never measured.
+        // Never measured cells should be marked unknown
+        // to be correctly processed in the planner.
+        unknown_buf_[i] = msg->data[i] < 0 && map->getCost(gx, gy, yaw) < 0;
+      }
+    }
+    Rect range = {-range_max_, range_max_, -range_max_, range_max_};
+    for (size_t i = 0; i < msg->data.size(); i++)
+    {
+      const int8_t val = msg->data[i];
+      if (val < 0)
+      {
+        continue;
+      }
+      const int gx = std::lround((i % msg->info.width) * resolution_scale) + ox;
+      const int gy = std::lround((i / msg->info.width) * resolution_scale) + oy;
+      if (static_cast<size_t>(gx) >= map->info.width ||
+          static_cast<size_t>(gy) >= map->info.height)
+        continue;
+      if (val == 0)
+      {
+        int8_t& m = map->getCost(gx, gy, yaw);
+        if (m < 0)
+          m = 0;
+        continue;
+      }
+      getRange(i, range);
+      const int map_x_min = std::max(gx + range.x_min, 0);
+      const int map_x_max = std::min(gx + range.x_max, static_cast<int>(map->info.width) - 1);
+      const int map_y_min = std::max(gy + range.y_min, 0);
+      const int map_y_max = std::min(gy + range.y_max, static_cast<int>(map->info.height) - 1);
+      for (int map_y = map_y_min; map_y <= map_y_max; ++map_y)
+      {
+        // Use raw pointers for faster iteration
+        int8_t* cost_addr = &(map->getCost(map_x_min, map_y, yaw));
+        const char* cs_addr = &(cs_template_.e(map_x_min - gx, map_y - gy, yaw));
+        for (int n = 0; n <= map_x_max - map_x_min; ++n, ++cost_addr, ++cs_addr)
         {
-          for (int x = -range_max_; x <= range_max_; x++)
-          {
-            const int x2 = gx + x;
-            const int y2 = gy + y;
-            if (static_cast<unsigned int>(x2) >= map->info.width ||
-                static_cast<unsigned int>(y2) >= map->info.height)
-              continue;
-
-            auto& m = map->getCost(x2, y2, yaw);
-            const auto c = cs_template_.e(x, y, yaw) * val / 100;
-            if (m < c)
-              m = c;
-          }
+          const int8_t c = *cs_addr * val / 100;
+          if (c > 0 && *cost_addr < c)
+            *cost_addr = c;
         }
+      }
+    }
+    if (keep_unknown_)
+    {
+      for (size_t i = 0; i < unknown_buf_.size(); i++)
+      {
+        if (!unknown_buf_[i])
+          continue;
+        const int gx = std::lround((i % msg->info.width) * resolution_scale) + ox;
+        const int gy = std::lround((i / msg->info.width) * resolution_scale) + oy;
+        if (static_cast<size_t>(gx) >= map->info.width ||
+            static_cast<size_t>(gy) >= map->info.height)
+          continue;
+        map->getCost(gx, gy, yaw) = -1;
       }
     }
   }

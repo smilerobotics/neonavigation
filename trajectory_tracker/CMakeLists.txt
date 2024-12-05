@@ -1,87 +1,70 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(trajectory_tracker)
 
-## Find catkin and any catkin packages
-find_package(catkin REQUIRED
-  COMPONENTS
-    roscpp
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
-    geometry_msgs
-    interactive_markers
-    nav_msgs
-    tf2
-    tf2_geometry_msgs
-    tf2_ros
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    neonavigation_common
-    trajectory_tracker_msgs
-)
+ament_auto_add_library(trajectory_tracker_core SHARED
+  src/tracker_node.cpp)
+ament_auto_add_executable(trajectory_tracker src/trajectory_tracker_main.cpp)
 
-find_package(Boost REQUIRED COMPONENTS thread)
-find_package(Eigen3 REQUIRED)
+# ament_auto_add_executable(trajectory_recorder src/trajectory_recorder.cpp)
+# ament_auto_add_executable(trajectory_saver src/trajectory_saver.cpp)
+# ament_auto_add_executable(trajectory_server src/trajectory_server.cpp)
 
-## Declare a catkin package
-catkin_package(
-  CATKIN_DEPENDS
-    roscpp
+if(BUILD_TESTING)
+  find_package(GTest REQUIRED)
+  set(ament_cmake_copyright_FOUND TRUE)
+  set(ament_cmake_uncrustify_FOUND TRUE)
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_auto_find_test_dependencies()
+  ament_lint_auto_find_test_dependencies()
 
-    geometry_msgs
-    interactive_markers
-    nav_msgs
-    tf2
-    tf2_geometry_msgs
-    tf2_ros
+  include_directories(test/include)
 
-    neonavigation_common
-    trajectory_tracker_msgs
-)
+  ament_auto_add_executable(time_source test/src/time_source.cpp)
+  ament_auto_add_executable(test_trajectory_tracker test/src/test_trajectory_tracker.cpp)
+  target_link_libraries(test_trajectory_tracker ${GTEST_LIBRARIES})
+  ament_auto_add_executable(test_trajectory_tracker_with_odom test/src/test_trajectory_tracker_with_odom.cpp)
+  target_link_libraries(test_trajectory_tracker_with_odom ${GTEST_LIBRARIES})
+  ament_auto_add_executable(test_trajectory_tracker_overshoot test/src/test_trajectory_tracker_overshoot.cpp)
+  target_link_libraries(test_trajectory_tracker_overshoot ${GTEST_LIBRARIES})
 
-## Build
-include_directories(${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} include)
-
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif(COMPILER_SUPPORTS_CXX0X)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-else()
-  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+  install(DIRECTORY
+    test/configs
+    DESTINATION share/${PROJECT_NAME}/test/
+  )
+  add_launch_test(test/test/test_trajectory_tracker_launch.py
+    TARGET test_trajectory_tracker
+    ARGS use_sim_time:=true
+    TIMEOUT 120
+  )
+  add_launch_test(test/test/test_trajectory_tracker_launch.py
+    TARGET test_trajectory_tracker_with_odom_delay
+    ARGS use_sim_time:=true odom_delay:=0.04 use_odom:=true use_time_optimal_control:=true
+    TIMEOUT 120
+  )
+  add_launch_test(test/test/test_trajectory_tracker_launch.py
+    TARGET test_trajectory_tracker_without_time_optimal_control
+    ARGS use_sim_time:=true odom_delay:=0.04 use_odom:=true use_time_optimal_control:=false
+    TIMEOUT 120
+  )
+  add_launch_test(test/test/test_trajectory_tracker_overshoot_launch.py
+    TARGET test_trajectory_tracker_overshoot
+    ARGS test_executable:=test_trajectory_tracker_overshoot
+    TIMEOUT 60
+  )
+  add_launch_test(test/test/test_trajectory_tracker_overshoot_launch.py
+    TARGET test_trajectory_tracker_with_odom
+    ARGS test_executable:=test_trajectory_tracker_with_odom
+    TIMEOUT 60
+  )
+  add_launch_test(test/test/test_trajectory_tracker_action_server_launch.py
+    TIMEOUT 60
+  )
 endif()
 
-add_executable(trajectory_tracker src/trajectory_tracker.cpp)
-target_link_libraries(trajectory_tracker ${catkin_LIBRARIES})
-add_dependencies(trajectory_tracker ${catkin_EXPORTED_TARGETS})
-
-add_executable(trajectory_recorder src/trajectory_recorder.cpp)
-target_link_libraries(trajectory_recorder ${catkin_LIBRARIES})
-add_dependencies(trajectory_recorder ${catkin_EXPORTED_TARGETS})
-
-add_executable(trajectory_saver src/trajectory_saver.cpp)
-target_link_libraries(trajectory_saver ${catkin_LIBRARIES})
-add_dependencies(trajectory_saver ${catkin_EXPORTED_TARGETS})
-
-add_executable(trajectory_server src/trajectory_server.cpp)
-target_link_libraries(trajectory_server ${catkin_LIBRARIES})
-add_dependencies(trajectory_server ${catkin_EXPORTED_TARGETS})
-
-if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  find_package(rosunit REQUIRED)
-  add_subdirectory(test)
-
-  find_package(roslint REQUIRED)
-  roslint_cpp()
-  roslint_add_test()
-endif()
-
-install(TARGETS
-    trajectory_recorder
-    trajectory_saver
-    trajectory_server
-    trajectory_tracker
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+ament_auto_package()

@@ -1,38 +1,21 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(neonavigation_common)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
-find_package(catkin REQUIRED
-  COMPONENTS
-    roscpp
-)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-catkin_package(
-  INCLUDE_DIRS include
-	CATKIN_DEPENDS
-    roscpp
-)
+include_directories(include)
+ament_auto_add_library(neonavigation_common SHARED
+  src/neonavigation_node.cpp)
 
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX11)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-elseif(COMPILER_SUPPORTS_CXX0X)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-else()
-  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+if(BUILD_TESTING)
+    set(ament_cmake_copyright_FOUND TRUE)
+    set(ament_cmake_uncrustify_FOUND TRUE)
+    set(ament_cmake_cpplint_FOUND TRUE)
+    ament_auto_find_test_dependencies()
+    ament_lint_auto_find_test_dependencies()
 endif()
 
-include_directories(${catkin_INCLUDE_DIRS} include)
-
-
-if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  find_package(roslint REQUIRED)
-  roslint_cpp()
-  roslint_add_test()
-endif()
-
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-)
+ament_auto_package()

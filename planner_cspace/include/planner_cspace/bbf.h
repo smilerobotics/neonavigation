@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -30,6 +30,8 @@
 #ifndef PLANNER_CSPACE_BBF_H
 #define PLANNER_CSPACE_BBF_H
 
+namespace planner_cspace
+{
 namespace bbf
 {
 constexpr float oddsToProbability(const float& o)
@@ -55,7 +57,7 @@ protected:
 public:
   explicit BinaryBayesFilter(
       const float& initial_odds = 1.0) noexcept
-      : odds_(initial_odds)
+    : odds_(initial_odds)
   {
   }
   float update(const float& odds)
@@ -81,5 +83,6 @@ public:
   }
 };
 };  // namespace bbf
+}  // namespace planner_cspace
 
 #endif  // PLANNER_CSPACE_BBF_H

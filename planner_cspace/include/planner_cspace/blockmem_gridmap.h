@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -30,14 +30,52 @@
 #ifndef PLANNER_CSPACE_BLOCKMEM_GRIDMAP_H
 #define PLANNER_CSPACE_BLOCKMEM_GRIDMAP_H
 
+#include <bitset>
 #include <limits>
+#include <memory>
 
 #include <planner_cspace/cyclic_vec.h>
 
-template <class T, int DIM, int NONCYCLIC, int BLOCK_WIDTH = 0x20>
-class BlockMemGridmap
+namespace planner_cspace
 {
+template <class T, int DIM, int NONCYCLIC>
+class BlockMemGridmapBase
+{
+public:
+  virtual const CyclicVecInt<DIM, NONCYCLIC>& size() const = 0;
+  virtual size_t ser_size() const = 0;
+  virtual void clear(const T zero) = 0;
+  virtual void clear_partially(
+      const T zero, const CyclicVecInt<DIM, NONCYCLIC>& min, const CyclicVecInt<DIM, NONCYCLIC>& max) = 0;
+  virtual void copy_partially(
+      const BlockMemGridmapBase<T, DIM, NONCYCLIC>& base, const CyclicVecInt<DIM, NONCYCLIC>& min,
+      const CyclicVecInt<DIM, NONCYCLIC>& max) = 0;
+  virtual void reset(const CyclicVecInt<DIM, NONCYCLIC>& size) = 0;
+  virtual T& operator[](const CyclicVecInt<DIM, NONCYCLIC>& pos) = 0;
+  virtual const T operator[](const CyclicVecInt<DIM, NONCYCLIC>& pos) const = 0;
+  virtual std::function<void(CyclicVecInt<DIM, NONCYCLIC>, size_t&, size_t&)> getAddressor() const = 0;
+};
+
+template <class T, int DIM, int NONCYCLIC, int BLOCK_WIDTH = 0x20, bool ENABLE_VALIDATION = false>
+class BlockMemGridmap : public BlockMemGridmapBase<T, DIM, NONCYCLIC>
+{
+private:
+  static constexpr bool isPowOf2(const int v)
+  {
+    return v && ((v & (v - 1)) == 0);
+  }
+  static_assert(isPowOf2(BLOCK_WIDTH), "BLOCK_WIDTH must be power of 2");
+  static_assert(BLOCK_WIDTH > 0, "BLOCK_WIDTH must be >0");
+
+  static constexpr size_t log2Recursive(const size_t v, const size_t depth = 0)
+  {
+    return v == 1 ? depth : log2Recursive(v >> 1, depth + 1);
+  }
+
 protected:
+  constexpr static size_t block_bit_ = log2Recursive(BLOCK_WIDTH);
+  constexpr static size_t block_bit_mask_ = (1 << block_bit_) - 1;
+
   std::unique_ptr<T[]> c_;
   CyclicVecInt<DIM, NONCYCLIC> size_;
   CyclicVecInt<DIM, NONCYCLIC> block_size_;
@@ -46,24 +84,31 @@ protected:
   size_t block_num_;
   T dummy_;
 
-public:
-  void block_addr(
+  inline void block_addr(
       const CyclicVecInt<DIM, NONCYCLIC>& pos, size_t& baddr, size_t& addr) const
   {
     addr = 0;
     baddr = 0;
     for (int i = 0; i < NONCYCLIC; i++)
     {
-      addr *= BLOCK_WIDTH;
-      addr += pos[i] % BLOCK_WIDTH;
+      addr = (addr << block_bit_) + (pos[i] & block_bit_mask_);
       baddr *= block_size_[i];
-      baddr += pos[i] / BLOCK_WIDTH;
+      baddr += pos[i] >> block_bit_;
     }
     for (int i = NONCYCLIC; i < DIM; i++)
     {
       addr *= size_[i];
       addr += pos[i];
     }
+  }
+
+public:
+  std::function<void(CyclicVecInt<DIM, NONCYCLIC>, size_t&, size_t&)> getAddressor() const
+  {
+    return std::bind(
+        &BlockMemGridmap<T, DIM, NONCYCLIC, BLOCK_WIDTH, ENABLE_VALIDATION>::block_addr,
+        this,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
   }
   const CyclicVecInt<DIM, NONCYCLIC>& size() const
   {
@@ -80,6 +125,37 @@ public:
       c_[i] = zero;
     }
   }
+  void clear_partially(
+      const T zero, const CyclicVecInt<DIM, NONCYCLIC>& min, const CyclicVecInt<DIM, NONCYCLIC>& max)
+  {
+    CyclicVecInt<DIM, NONCYCLIC> p = min;
+    for (p[0] = min[0]; p[0] <= max[0]; ++p[0])
+    {
+      for (p[1] = min[1]; p[1] <= max[1]; ++p[1])
+      {
+        for (p[2] = min[2]; p[2] <= max[2]; ++p[2])
+        {
+          (*this)[p] = zero;
+        }
+      }
+    }
+  }
+  void copy_partially(
+      const BlockMemGridmapBase<T, DIM, NONCYCLIC>& base, const CyclicVecInt<DIM, NONCYCLIC>& min,
+      const CyclicVecInt<DIM, NONCYCLIC>& max)
+  {
+    CyclicVecInt<DIM, NONCYCLIC> p = min;
+    for (p[0] = min[0]; p[0] <= max[0]; ++p[0])
+    {
+      for (p[1] = min[1]; p[1] <= max[1]; ++p[1])
+      {
+        for (p[2] = min[2]; p[2] <= max[2]; ++p[2])
+        {
+          (*this)[p] = base[p];
+        }
+      }
+    }
+  }
   void clear_positive(const T zero)
   {
     for (size_t i = 0; i < ser_size_; i++)
@@ -90,7 +166,7 @@ public:
   }
   void reset(const CyclicVecInt<DIM, NONCYCLIC>& size)
   {
-    auto size_tmp = size;
+    CyclicVecInt<DIM, NONCYCLIC> size_tmp = size;
 
     for (int i = 0; i < NONCYCLIC; i++)
     {
@@ -123,30 +199,37 @@ public:
     size_ = size;
   }
   explicit BlockMemGridmap(const CyclicVecInt<DIM, NONCYCLIC>& size_)
+    : BlockMemGridmap()
   {
     reset(size_);
   }
   BlockMemGridmap()
+    : dummy_(std::numeric_limits<T>::max())
   {
   }
   T& operator[](const CyclicVecInt<DIM, NONCYCLIC>& pos)
   {
     size_t baddr, addr;
     block_addr(pos, baddr, addr);
-    if (addr >= block_ser_size_ || baddr >= block_num_)
+    const size_t a = baddr * block_ser_size_ + addr;
+    if (ENABLE_VALIDATION)
     {
-      dummy_ = std::numeric_limits<T>::max();
-      return dummy_;
+      if (a >= ser_size_)
+        return dummy_;
     }
-    return c_[baddr * block_ser_size_ + addr];
+    return c_[a];
   }
   const T operator[](const CyclicVecInt<DIM, NONCYCLIC>& pos) const
   {
     size_t baddr, addr;
     block_addr(pos, baddr, addr);
-    if (addr >= block_ser_size_ || baddr >= block_num_)
-      return std::numeric_limits<T>::max();
-    return c_[baddr * block_ser_size_ + addr];
+    const size_t a = baddr * block_ser_size_ + addr;
+    if (ENABLE_VALIDATION)
+    {
+      if (a >= ser_size_)
+        return std::numeric_limits<T>::max();
+    }
+    return c_[a];
   }
   bool validate(const CyclicVecInt<DIM, NONCYCLIC>& pos, const int tolerance = 0) const
   {
@@ -162,14 +245,15 @@ public:
     }
     return true;
   }
-  const BlockMemGridmap<T, DIM, NONCYCLIC, BLOCK_WIDTH>& operator=(
-      const BlockMemGridmap<T, DIM, NONCYCLIC, BLOCK_WIDTH>& gm)
+  const BlockMemGridmap<T, DIM, NONCYCLIC, BLOCK_WIDTH, ENABLE_VALIDATION>& operator=(
+      const BlockMemGridmap<T, DIM, NONCYCLIC, BLOCK_WIDTH, ENABLE_VALIDATION>& gm)
   {
     reset(gm.size_);
-    memcpy(c_.get(), gm.c_.get(), ser_size_);
+    memcpy(c_.get(), gm.c_.get(), ser_size_ * sizeof(T));
 
     return *this;
   }
 };
+}  // namespace planner_cspace
 
 #endif  // PLANNER_CSPACE_BLOCKMEM_GRIDMAP_H

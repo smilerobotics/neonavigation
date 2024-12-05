@@ -35,15 +35,16 @@
    This software was implemented to accomplish the above research.
  */
 
+#include <cmath>
+#include <string>
+
 #include <ros/ros.h>
 
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Path.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/transform_listener.h>
-
-#include <math.h>
-#include <string>
+#include <std_srvs/Empty.h>
 
 #include <neonavigation_common/compatibility.h>
 
@@ -55,6 +56,9 @@ public:
   void spin();
 
 private:
+  bool clearPath(std_srvs::Empty::Request& req,
+                 std_srvs::Empty::Response& res);
+
   std::string topic_path_;
   std::string frame_robot_;
   std::string frame_global_;
@@ -67,6 +71,7 @@ private:
   ros::Publisher pub_path_;
   tf2_ros::Buffer tfbuf_;
   tf2_ros::TransformListener tfl_;
+  ros::ServiceServer srs_clear_path_;
 
   nav_msgs::Path path_;
 };
@@ -87,14 +92,23 @@ RecorderNode::RecorderNode()
   pub_path_ = neonavigation_common::compat::advertise<nav_msgs::Path>(
       nh_, "path",
       pnh_, topic_path_, 10, true);
+  srs_clear_path_ = pnh_.advertiseService("clear_path", &RecorderNode::clearPath, this);
 }
+
 RecorderNode::~RecorderNode()
 {
 }
 
 float dist2d(geometry_msgs::Point& a, geometry_msgs::Point& b)
 {
-  return sqrtf(powf(a.x - b.x, 2) + powf(a.y - b.y, 2));
+  return std::sqrt(std::pow(a.x - b.x, 2) + std::pow(a.y - b.y, 2));
+}
+
+bool RecorderNode::clearPath(std_srvs::Empty::Request& /* req */,
+                             std_srvs::Empty::Response& /* res */)
+{
+  path_.poses.clear();
+  return true;
 }
 
 void RecorderNode::spin()

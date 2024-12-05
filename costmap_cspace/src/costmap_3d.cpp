@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -36,7 +36,6 @@
 #include <utility>
 #include <vector>
 
-#include <costmap_cspace/node_handle_float.h>
 #include <costmap_cspace_msgs/CSpace3D.h>
 #include <costmap_cspace_msgs/CSpace3DUpdate.h>
 
@@ -46,8 +45,8 @@
 class Costmap3DOFNode
 {
 protected:
-  ros::NodeHandle_f nh_;
-  ros::NodeHandle_f pnh_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle pnh_;
   ros::Subscriber sub_map_;
   std::vector<ros::Subscriber> sub_map_overlay_;
   ros::Publisher pub_costmap_;
@@ -59,7 +58,8 @@ protected:
   costmap_cspace::Costmap3d::Ptr costmap_;
   std::vector<
       std::pair<nav_msgs::OccupancyGrid::ConstPtr,
-                costmap_cspace::Costmap3dLayerBase::Ptr>> map_buffer_;
+                costmap_cspace::Costmap3dLayerBase::Ptr>>
+      map_buffer_;
 
   void cbMap(
       const nav_msgs::OccupancyGrid::ConstPtr& msg,
@@ -99,23 +99,29 @@ protected:
       return;
     }
 
-    map->processMapOverlay(msg);
+    map->processMapOverlay(msg, true);
     ROS_DEBUG("C-Space costmap updated");
   }
   bool cbUpdateStatic(
-      const costmap_cspace::CSpace3DMsg::Ptr map,
-      const costmap_cspace_msgs::CSpace3DUpdate::Ptr update)
+      const costmap_cspace::CSpace3DMsg::Ptr& map)
   {
     publishDebug(*map);
     pub_costmap_.publish<costmap_cspace_msgs::CSpace3D>(*map);
     return true;
   }
   bool cbUpdate(
-      const costmap_cspace::CSpace3DMsg::Ptr map,
-      const costmap_cspace_msgs::CSpace3DUpdate::Ptr update)
+      const costmap_cspace::CSpace3DMsg::Ptr& map,
+      const costmap_cspace_msgs::CSpace3DUpdate::Ptr& update)
   {
-    publishDebug(*map);
-    pub_costmap_update_.publish(*update);
+    if (update)
+    {
+      publishDebug(*map);
+      pub_costmap_update_.publish(*update);
+    }
+    else
+    {
+      ROS_WARN("Updated region of the costmap is empty. The position may be out-of-boundary, or input map is wrong.");
+    }
     return true;
   }
   void publishDebug(const costmap_cspace_msgs::CSpace3D& map)
@@ -207,7 +213,9 @@ public:
     float linear_spread;
     pnh_.param("linear_expand", linear_expand, 0.2f);
     pnh_.param("linear_spread", linear_spread, 0.5f);
-    root_layer->setExpansion(linear_expand, linear_spread);
+    int linear_spread_min_cost;
+    pnh_.param("linear_spread_min_cost", linear_spread_min_cost, 0);
+    root_layer->setExpansion(linear_expand, linear_spread, linear_spread_min_cost);
     root_layer->setFootprint(footprint);
 
     if (pnh_.hasParam("static_layers"))
@@ -269,8 +277,8 @@ public:
       }
     }
 
-    auto static_output_layer = costmap_->addLayer<costmap_cspace::Costmap3dLayerOutput>();
-    static_output_layer->setHandler(boost::bind(&Costmap3DOFNode::cbUpdateStatic, this, _1, _2));
+    auto static_output_layer = costmap_->addLayer<costmap_cspace::Costmap3dStaticLayerOutput>();
+    static_output_layer->setHandler(boost::bind(&Costmap3DOFNode::cbUpdateStatic, this, _1));
 
     sub_map_ = nh_.subscribe<nav_msgs::OccupancyGrid>(
         "map", 1,
@@ -363,7 +371,7 @@ public:
           boost::bind(&Costmap3DOFNode::cbMapOverlay, this, _1, layer)));
     }
 
-    auto update_output_layer = costmap_->addLayer<costmap_cspace::Costmap3dLayerOutput>();
+    auto update_output_layer = costmap_->addLayer<costmap_cspace::Costmap3dUpdateLayerOutput>();
     update_output_layer->setHandler(boost::bind(&Costmap3DOFNode::cbUpdate, this, _1, _2));
 
     const geometry_msgs::PolygonStamped footprint_msg = footprint.toMsg();

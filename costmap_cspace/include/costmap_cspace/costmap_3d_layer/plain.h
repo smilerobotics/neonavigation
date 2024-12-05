@@ -30,12 +30,15 @@
 #ifndef COSTMAP_CSPACE_COSTMAP_3D_LAYER_PLAIN_H
 #define COSTMAP_CSPACE_COSTMAP_3D_LAYER_PLAIN_H
 
-#include <geometry_msgs/PolygonStamped.h>
-#include <nav_msgs/OccupancyGrid.h>
+#include <memory>
+
 #include <costmap_cspace_msgs/CSpace3D.h>
 #include <costmap_cspace_msgs/CSpace3DUpdate.h>
+#include <geometry_msgs/PolygonStamped.h>
+#include <nav_msgs/OccupancyGrid.h>
 
 #include <costmap_cspace/costmap_3d_layer/base.h>
+#include <costmap_cspace/costmap_3d_layer/footprint.h>
 
 namespace costmap_cspace
 {
@@ -56,9 +59,12 @@ public:
   }
   void loadConfig(XmlRpc::XmlRpcValue config)
   {
+    const int linear_spread_min_cost =
+        config.hasMember("linear_spread_min_cost") ? static_cast<int>(config["linear_spread_min_cost"]) : 0;
     setExpansion(
         static_cast<double>(config["linear_expand"]),
-        static_cast<double>(config["linear_spread"]));
+        static_cast<double>(config["linear_spread"]),
+        linear_spread_min_cost);
   }
 };
 }  // namespace costmap_cspace

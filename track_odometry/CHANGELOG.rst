@@ -2,6 +2,186 @@
 Changelog for package track_odometry
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.1 (2024-03-22)
+-------------------
+
+0.17.0 (2023-11-02)
+-------------------
+
+0.16.0 (2023-09-14)
+-------------------
+
+0.15.0 (2023-08-30)
+-------------------
+
+0.14.2 (2023-07-31)
+-------------------
+
+0.14.1 (2023-07-07)
+-------------------
+
+0.14.0 (2023-06-06)
+-------------------
+
+0.13.0 (2023-05-31)
+-------------------
+
+0.12.2 (2023-02-28)
+-------------------
+
+0.12.1 (2023-02-25)
+-------------------
+
+0.12.0 (2023-01-30)
+-------------------
+
+0.11.8 (2022-12-28)
+-------------------
+
+0.11.7 (2022-08-05)
+-------------------
+
+0.11.6 (2022-07-20)
+-------------------
+
+0.11.5 (2022-07-06)
+-------------------
+
+0.11.4 (2022-04-13)
+-------------------
+
+0.11.3 (2021-12-02)
+-------------------
+
+0.11.2 (2021-11-08)
+-------------------
+
+0.11.1 (2021-10-29)
+-------------------
+
+0.11.0 (2021-08-30)
+-------------------
+
+0.10.11 (2021-06-21)
+--------------------
+
+0.10.10 (2021-03-18)
+--------------------
+
+0.10.9 (2021-03-16)
+-------------------
+
+0.10.8 (2021-03-10)
+-------------------
+
+0.10.7 (2021-03-07)
+-------------------
+
+0.10.6 (2021-01-28)
+-------------------
+
+0.10.5 (2020-12-24)
+-------------------
+
+0.10.4 (2020-11-12)
+-------------------
+
+0.10.3 (2020-10-22)
+-------------------
+
+0.10.2 (2020-10-07)
+-------------------
+
+0.10.1 (2020-08-26)
+-------------------
+
+0.10.0 (2020-08-06)
+-------------------
+* Increase initialization timeout in the tests (`#536 <https://github.com/at-wat/neonavigation/issues/536>`_)
+* Contributors: Atsushi Watanabe
+
+0.9.1 (2020-07-16)
+------------------
+
+0.9.0 (2020-07-02)
+------------------
+
+0.8.8 (2020-06-15)
+------------------
+
+0.8.7 (2020-05-22)
+------------------
+
+0.8.6 (2020-05-15)
+------------------
+* Fix duplicated tf timestamp (`#494 <https://github.com/at-wat/neonavigation/issues/494>`_)
+* track_odometry: increase transform timeout in tests (`#490 <https://github.com/at-wat/neonavigation/issues/490>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.5 (2020-05-04)
+------------------
+
+0.8.4 (2020-04-30)
+------------------
+* Clean unused dependencies (`#472 <https://github.com/at-wat/neonavigation/issues/472>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.3 (2020-04-26)
+------------------
+
+0.8.2 (2020-04-07)
+------------------
+* track_odometry: add option to align all postures to source frame (`#447 <https://github.com/at-wat/neonavigation/issues/447>`_)
+* Support Noetic (`#461 <https://github.com/at-wat/neonavigation/issues/461>`_)
+* track_odometry: add enable_tcp_no_delay option to reduce latency (`#456 <https://github.com/at-wat/neonavigation/issues/456>`_)
+* track_odometry: use double instead of float (`#455 <https://github.com/at-wat/neonavigation/issues/455>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao, Yuta Koga
+
+0.8.1 (2020-03-12)
+------------------
+* track_odometry: increase queue sizes of message_filters::Subscriber (`#450 <https://github.com/at-wat/neonavigation/issues/450>`_)
+* Contributors: Naotaka Hatao
+
+0.8.0 (2020-03-04)
+------------------
+
+0.7.0 (2020-02-04)
+------------------
+
+0.6.0 (2020-01-18)
+------------------
+
+0.5.1 (2020-01-06)
+------------------
+* track_odometry: fix test stability (`#412 <https://github.com/at-wat/neonavigation/issues/412>`_)
+* Fix header namespaces (`#408 <https://github.com/at-wat/neonavigation/issues/408>`_)
+* Migrate from C math functions to C++ (`#407 <https://github.com/at-wat/neonavigation/issues/407>`_)
+* Contributors: Atsushi Watanabe
+
+0.5.0 (2019-10-21)
+------------------
+
+0.4.3 (2019-09-10)
+------------------
+
+0.4.2 (2019-08-19)
+------------------
+
+0.4.1 (2019-08-15)
+------------------
+* track_odometry: synchronize Odometry and IMU (`#363 <https://github.com/at-wat/neonavigation/issues/363>`_)
+* Drop ROS Indigo and Ubuntu Trusty support (`#310 <https://github.com/at-wat/neonavigation/issues/310>`_)
+* Fix include directory priority (`#308 <https://github.com/at-wat/neonavigation/issues/308>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.0 (2019-05-09)
+------------------
+* track_odometry: fix z_filter unit to seconds (`#290 <https://github.com/at-wat/neonavigation/issues/290>`_)
+* track_odometry: add project_posture option to tf_projection node (`#286 <https://github.com/at-wat/neonavigation/issues/286>`_)
+* track_odometry: refactor tf_projection (`#285 <https://github.com/at-wat/neonavigation/issues/285>`_)
+* track_odometry: set missing child_frame_id in tf_projection (`#283 <https://github.com/at-wat/neonavigation/issues/283>`_)
+* Contributors: Atsushi Watanabe, Yuta Koga
+
 0.3.1 (2019-01-10)
 ------------------
 * Fix pointer alignment style (`#233 <https://github.com/at-wat/neonavigation/issues/233>`_)

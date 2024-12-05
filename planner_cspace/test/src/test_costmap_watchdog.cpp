@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -76,6 +76,8 @@ TEST(Planner3D, CostmapWatchdog)
   goal.pose.position.x = 1.9;
   goal.pose.position.y = 2.8;
   goal.pose.orientation.w = 1.0;
+  // Assure that goal is received after map in planner_3d.
+  ros::Duration(0.5).sleep();
   pub_goal.publish(goal);
 
   ros::Rate rate(10);
@@ -122,6 +124,90 @@ TEST(Planner3D, CostmapWatchdog)
     {
       return;
     }
+  }
+  ASSERT_TRUE(ros::ok());
+}
+
+TEST(Planner3D, CostmapTimeoutOnFinishing)
+{
+  planner_cspace_msgs::PlannerStatus::ConstPtr status;
+  nav_msgs::Path::ConstPtr path;
+
+  const boost::function<void(const planner_cspace_msgs::PlannerStatus::ConstPtr&)> cb_status =
+      [&status](const planner_cspace_msgs::PlannerStatus::ConstPtr& msg) -> void
+  {
+    status = msg;
+  };
+  const boost::function<void(const nav_msgs::Path::ConstPtr&)> cb_path =
+      [&path](const nav_msgs::Path::ConstPtr& msg) -> void
+  {
+    path = msg;
+  };
+
+  ros::NodeHandle nh("");
+  ros::Publisher pub_goal = nh.advertise<geometry_msgs::PoseStamped>("goal", 1, true);
+  ros::Publisher pub_cost_update = nh.advertise<costmap_cspace_msgs::CSpace3DUpdate>("costmap_update", 1);
+  ros::Subscriber sub_status = nh.subscribe("planner_3d/status", 1, cb_status);
+  ros::Subscriber sub_path = nh.subscribe("path", 1, cb_path);
+
+  geometry_msgs::PoseStamped goal;
+  goal.header.frame_id = "map";
+  goal.pose.position.x = 2.55;
+  goal.pose.position.y = 0.45;
+  goal.pose.orientation.w = std::sin(0.09);
+  goal.pose.orientation.z = std::cos(0.09);
+  // Assure that goal is received after map in planner_3d.
+  ros::Duration(0.5).sleep();
+  pub_goal.publish(goal);
+
+  costmap_cspace_msgs::CSpace3DUpdate update;
+  update.header.frame_id = "map";
+  update.width = update.height = update.angle = 0;
+
+  const ros::Time deadline = ros::Time::now() + ros::Duration(2.0);
+  ros::Rate rate(10);
+  while (ros::ok())
+  {
+    update.header.stamp = ros::Time::now();
+    pub_cost_update.publish(update);
+
+    ros::spinOnce();
+    rate.sleep();
+    if (status && status->status == planner_cspace_msgs::PlannerStatus::FINISHING)
+      break;
+
+    ASSERT_LT(update.header.stamp, deadline)
+        << "Planner didn't enter FINISHING state: "
+        << (status ? status->status : -1);
+  }
+  while (ros::ok())
+  {
+    ros::spinOnce();
+    rate.sleep();
+    if (status->error == planner_cspace_msgs::PlannerStatus::DATA_MISSING)
+      break;
+
+    ASSERT_EQ(status->status, planner_cspace_msgs::PlannerStatus::FINISHING)
+        << "Wrong test condition";
+    ASSERT_LT(update.header.stamp, deadline)
+        << "Planner didn't enter DATA_MISSING state"
+        << status->error;
+  }
+  path = nullptr;
+  while (ros::ok())
+  {
+    update.header.stamp = ros::Time::now();
+    pub_cost_update.publish(update);
+
+    ros::spinOnce();
+    rate.sleep();
+    if (path)
+      break;
+
+    ASSERT_EQ(status->status, planner_cspace_msgs::PlannerStatus::FINISHING)
+        << "Wrong test condition";
+    ASSERT_LT(update.header.stamp, deadline)
+        << "No path was published";
   }
   ASSERT_TRUE(ros::ok());
 }

@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -30,6 +30,12 @@
 #ifndef COSTMAP_CSPACE_COSTMAP_3D_LAYER_BASE_H
 #define COSTMAP_CSPACE_COSTMAP_3D_LAYER_BASE_H
 
+#include <algorithm>
+#include <cmath>
+#include <map>
+#include <memory>
+#include <string>
+
 #include <ros/ros.h>
 
 #include <geometry_msgs/PolygonStamped.h>
@@ -37,10 +43,6 @@
 
 #include <costmap_cspace_msgs/CSpace3D.h>
 #include <costmap_cspace_msgs/CSpace3DUpdate.h>
-
-#include <algorithm>
-#include <map>
-#include <string>
 
 namespace costmap_cspace
 {
@@ -74,6 +76,20 @@ public:
     ROS_ASSERT(addr < data.size());
 
     return data[addr];
+  }
+  static void copyCells(CSpace3DMsg& to, const int& to_x, const int& to_y, const int& to_yaw,
+                        const CSpace3DMsg& from, const int& from_x, const int& from_y, const int& from_yaw,
+                        const int& copy_cell_num)
+  {
+    std::memcpy(to.data.data() + to.address(to_x, to_y, to_yaw),
+                from.data.data() + from.address(from_x, from_y, from_yaw), copy_cell_num * sizeof(int8_t));
+  }
+  static void copyCells(costmap_cspace_msgs::CSpace3DUpdate& to, const int& to_x, const int& to_y, const int& to_yaw,
+                        const CSpace3DMsg& from, const int& from_x, const int& from_y, const int& from_yaw,
+                        const int& copy_cell_num)
+  {
+    std::memcpy(to.data.data() + (to_yaw * to.height + to_y) * to.width + to_x,
+                from.data.data() + from.address(from_x, from_y, from_yaw), copy_cell_num * sizeof(int8_t));
   }
 };
 
@@ -159,17 +175,43 @@ public:
     width_ += 2 * ex;
     height_ += 2 * ex;
   }
-  void normalize()
+  void normalize(const int full_width, const int full_height)
   {
-    const int x2 = x_ + width_;
-    const int y2 = y_ + height_;
-    if (x_ < 0)
-      x_ = 0;
-    if (y_ < 0)
-      y_ = 0;
+    int update_x = x_;
+    int update_y = y_;
+    int update_width = width_;
+    int update_height = height_;
+    if (update_x < 0)
+    {
+      update_width += update_x;
+      update_x = 0;
+    }
+    if (update_y < 0)
+    {
+      update_height += update_y;
+      update_y = 0;
+    }
+    if (update_x + update_width > full_width)
+    {
+      update_width = full_width - update_x;
+    }
+    if (update_y + update_height > full_height)
+    {
+      update_height = full_height - update_y;
+    }
+    if (update_width < 0)
+    {
+      update_width = 0;
+    }
+    if (update_height < 0)
+    {
+      update_height = 0;
+    }
 
-    width_ = x2 - x_;
-    height_ = y2 - y_;
+    x_ = update_x;
+    y_ = update_y;
+    width_ = update_width;
+    height_ = update_height;
   }
   void bitblt(const CSpace3DMsg::Ptr& dest, const CSpace3DMsg::ConstPtr& src)
   {
@@ -177,7 +219,10 @@ public:
     ROS_ASSERT(dest->info.width == src->info.width);
     ROS_ASSERT(dest->info.height == src->info.height);
 
-    normalize();
+    normalize(src->info.width, src->info.height);
+    if (width_ == 0 || height_ == 0)
+      return;
+
     const size_t copy_length =
         std::min<size_t>(width_, src->info.width - x_) *
         sizeof(src->data[0]);
@@ -273,7 +318,7 @@ public:
     {
       for (unsigned int i = 0; i < xy_size; i++)
       {
-        map_->data[i + yaw * xy_size] = 0;
+        map_->data[i + yaw * xy_size] = -1;
       }
     }
     updateCSpace(
@@ -301,26 +346,34 @@ public:
             0, 0, 0, map_->info.width, map_->info.height, map_->info.angle,
             base_map->header.stamp));
   }
-  void processMapOverlay(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+  void processMapOverlay(const nav_msgs::OccupancyGrid::ConstPtr& msg, const bool update_chain_entry)
   {
     ROS_ASSERT(!root_);
     ROS_ASSERT(ang_grid_ > 0);
     const int ox =
-        lroundf((msg->info.origin.position.x - map_->info.origin.position.x) /
-                map_->info.linear_resolution);
+        std::lround((msg->info.origin.position.x - map_->info.origin.position.x) /
+                    map_->info.linear_resolution);
     const int oy =
-        lroundf((msg->info.origin.position.y - map_->info.origin.position.y) /
-                map_->info.linear_resolution);
+        std::lround((msg->info.origin.position.y - map_->info.origin.position.y) /
+                    map_->info.linear_resolution);
 
     const int w =
-        lroundf(msg->info.width * msg->info.resolution / map_->info.linear_resolution);
+        std::lround(msg->info.width * msg->info.resolution / map_->info.linear_resolution);
     const int h =
-        lroundf(msg->info.height * msg->info.resolution / map_->info.linear_resolution);
+        std::lround(msg->info.height * msg->info.resolution / map_->info.linear_resolution);
 
     map_updated_ = msg;
 
     region_ = UpdatedRegion(ox, oy, 0, w, h, map_->info.angle, msg->header.stamp);
-    updateChainEntry(UpdatedRegion(ox, oy, 0, w, h, map_->info.angle, msg->header.stamp));
+
+    if (update_chain_entry)
+    {
+      updateChainEntry(UpdatedRegion(ox, oy, 0, w, h, map_->info.angle, msg->header.stamp));
+    }
+    else
+    {
+      ROS_DEBUG("update_chain_entry execution has been avoided.");
+    }
   }
   CSpace3DMsg::Ptr getMap()
   {
@@ -348,10 +401,7 @@ protected:
 
   bool updateChainEntry(const UpdatedRegion& region, bool output = true)
   {
-    auto region_expand = region;
-    region_expand.expand(getRangeMax());
-
-    region_.merge(region_expand);
+    region_.merge(region);
 
     auto region_prev_now = region_;
     region_prev_now.merge(region_prev_);

@@ -2,6 +2,310 @@
 Changelog for package planner_cspace
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.17.1 (2024-03-22)
+-------------------
+* planner_3d: remove duplicated interpolation method (`#733 <https://github.com/at-wat/neonavigation/issues/733>`_)
+* Contributors: Naotaka Hatao
+
+0.17.0 (2023-11-02)
+-------------------
+* planner_3d: add an option to trigger planning by costmap updates (`#727 <https://github.com/at-wat/neonavigation/issues/727>`_)
+* planner_3d: fix cost calculation bug on in-place turning (`#725 <https://github.com/at-wat/neonavigation/issues/725>`_)
+* Contributors: Naotaka Hatao
+
+0.16.0 (2023-09-14)
+-------------------
+* planner_cspace: start planning from expected robot pose (`#717 <https://github.com/at-wat/neonavigation/issues/717>`_)
+* planner_cspace: add new parameters for cost function (`#720 <https://github.com/at-wat/neonavigation/issues/720>`_)
+* planner_cspace: refactor start pose building algorithm and fix finishing condition when start is relocated (`#718 <https://github.com/at-wat/neonavigation/issues/718>`_)
+* Contributors: Naotaka Hatao
+
+0.15.0 (2023-08-30)
+-------------------
+* planner_cspace: enable dynamic reconfigure (`#714 <https://github.com/at-wat/neonavigation/issues/714>`_)
+* planner_space: fix segmentation fault on out-of-map (`#712 <https://github.com/at-wat/neonavigation/issues/712>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.14.2 (2023-07-31)
+-------------------
+* planner_cspace: improve peformance of DistanceMap (`#709 <https://github.com/at-wat/neonavigation/issues/709>`_)
+* planner_cspace: avoid multiple goal pose relocation (`#708 <https://github.com/at-wat/neonavigation/issues/708>`_)
+* Contributors: Naotaka Hatao
+
+0.14.1 (2023-07-07)
+-------------------
+* planner_cspace: fix error status handling after cost_estim_cache\_ was not created (`#705 <https://github.com/at-wat/neonavigation/issues/705>`_)
+* Contributors: Naotaka Hatao
+
+0.14.0 (2023-06-06)
+-------------------
+* planner_cspace: publish planner_3d metrics (`#701 <https://github.com/at-wat/neonavigation/issues/701>`_)
+* Contributors: Atsushi Watanabe
+
+0.13.0 (2023-05-31)
+-------------------
+* planner_cspace: fix fast map update (`#692 <https://github.com/at-wat/neonavigation/issues/692>`_)
+* planner_cspace: fix status when goal or robot is in rock on updating goal (`#694 <https://github.com/at-wat/neonavigation/issues/694>`_)
+* planner_cspace: fix string template constexpr in test (`#685 <https://github.com/at-wat/neonavigation/issues/685>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.2 (2023-02-28)
+-------------------
+* planner_cspace: fix planner_2dof_serial_joints status (`#682 <https://github.com/at-wat/neonavigation/issues/682>`_)
+* planner_cspace: set timestamp to planner status message (`#681 <https://github.com/at-wat/neonavigation/issues/681>`_)
+* planner_cspace: fix uninitialized variables in DistanceMap (`#679 <https://github.com/at-wat/neonavigation/issues/679>`_)
+* planner_cspace: add scoped trace to some test cases (`#680 <https://github.com/at-wat/neonavigation/issues/680>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.1 (2023-02-25)
+-------------------
+* Improve test logs on timeout (`#673 <https://github.com/at-wat/neonavigation/issues/673>`_)
+* planner_cspace: fix map update range (`#672 <https://github.com/at-wat/neonavigation/issues/672>`_)
+* planner_cspace: clear velocity of dummy_robot on position set (`#669 <https://github.com/at-wat/neonavigation/issues/669>`_)
+* planner_cspace: fix flaky action tests (`#665 <https://github.com/at-wat/neonavigation/issues/665>`_)
+* planner_cspace: fix planner_cspace_msgs version constraint (`#663 <https://github.com/at-wat/neonavigation/issues/663>`_)
+* Contributors: Atsushi Watanabe
+
+0.12.0 (2023-01-30)
+-------------------
+* planner_cspace: add continuous movement mode to MoveWithTolerance (`#652 <https://github.com/at-wat/neonavigation/issues/652>`_)
+* Contributors: Naotaka Hatao
+
+0.11.8 (2022-12-28)
+-------------------
+* planner_cspace: add missing array include (`#658 <https://github.com/at-wat/neonavigation/issues/658>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.7 (2022-08-05)
+-------------------
+* planner_cspace: fix pose duplication on path interpolation (`#648 <https://github.com/at-wat/neonavigation/issues/648>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.6 (2022-07-20)
+-------------------
+* planner_cspace: add more test case to Planner3DMapSize (`#640 <https://github.com/at-wat/neonavigation/issues/640>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.5 (2022-07-06)
+-------------------
+* planner_cspace: fix access violation on wrong size costmap_update message (`#637 <https://github.com/at-wat/neonavigation/issues/637>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.4 (2022-04-13)
+-------------------
+
+0.11.3 (2021-12-02)
+-------------------
+* planner_cspace: fix DistanceMap::init() (`#625 <https://github.com/at-wat/neonavigation/issues/625>`_)
+* Fix flaky tests and add debug outputs (`#628 <https://github.com/at-wat/neonavigation/issues/628>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.11.2 (2021-11-08)
+-------------------
+* planner_cspace: Fix header of fihish path (`#622 <https://github.com/at-wat/neonavigation/issues/622>`_)
+* Contributors: Kazuki Takahashi
+
+0.11.1 (2021-10-29)
+-------------------
+* planner_cspace: refactor distance map generator (`#617 <https://github.com/at-wat/neonavigation/issues/617>`_)
+* planner_cspace: recover error on FINISHING state (`#615 <https://github.com/at-wat/neonavigation/issues/615>`_)
+* planner_cspace: fix flaky actionlib tests (`#616 <https://github.com/at-wat/neonavigation/issues/616>`_)
+* planner_cspace: remove unused variable (`#614 <https://github.com/at-wat/neonavigation/issues/614>`_)
+* Contributors: Atsushi Watanabe
+
+0.11.0 (2021-08-30)
+-------------------
+* Apply clang-format-11 with new setting (`#605 <https://github.com/at-wat/neonavigation/issues/605>`_)
+* Contributors: Naotaka Hatao
+
+0.10.11 (2021-06-21)
+--------------------
+* planner_cspace: reset next_replan_time after waitUntil() (`#602 <https://github.com/at-wat/neonavigation/issues/602>`_)
+* Contributors: Kazuki Takahashi
+
+0.10.10 (2021-03-18)
+--------------------
+* planner_cspace: fix goal unreachable condition (`#595 <https://github.com/at-wat/neonavigation/issues/595>`_)
+* Contributors: Atsushi Watanabe
+
+0.10.9 (2021-03-16)
+-------------------
+* planner_cspace: abort A* search on continuous timeout (`#592 <https://github.com/at-wat/neonavigation/issues/592>`_)
+* Contributors: Atsushi Watanabe
+
+0.10.8 (2021-03-10)
+-------------------
+* planner_cspace: improve performance of costmap reset (`#587 <https://github.com/at-wat/neonavigation/issues/587>`_)
+* Contributors: Naotaka Hatao
+
+0.10.7 (2021-03-07)
+-------------------
+* planner_cspace: improve performance of hysteresis clearing (`#586 <https://github.com/at-wat/neonavigation/issues/586>`_)
+* Contributors: Naotaka Hatao
+
+0.10.6 (2021-01-28)
+-------------------
+* planner_cspace: fix condition of open queue (`#576 <https://github.com/at-wat/neonavigation/issues/576>`_)
+* planner_cspace: add debug output about cost_estim_cache update (`#577 <https://github.com/at-wat/neonavigation/issues/577>`_)
+* planner_cspace: reuse open/erase queue (`#575 <https://github.com/at-wat/neonavigation/issues/575>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.10.5 (2020-12-24)
+-------------------
+* planner_cspace: enable tolerance in make_plan (`#570 <https://github.com/at-wat/neonavigation/issues/570>`_)
+* Contributors: Naotaka Hatao
+
+0.10.4 (2020-11-12)
+-------------------
+
+0.10.3 (2020-10-22)
+-------------------
+
+0.10.2 (2020-10-07)
+-------------------
+
+0.10.1 (2020-08-26)
+-------------------
+* planner_cspace: avoid publishing invalid path when escaping (`#546 <https://github.com/at-wat/neonavigation/issues/546>`_)
+* Contributors: Naotaka Hatao
+
+0.10.0 (2020-08-06)
+-------------------
+* planner_cspace: add test to MoveWithToleranceAction (`#528 <https://github.com/at-wat/neonavigation/issues/528>`_)
+* planner_cspace: add test to distance map debug output (`#526 <https://github.com/at-wat/neonavigation/issues/526>`_)
+* planner_cspace: periodically update local map in the test (`#522 <https://github.com/at-wat/neonavigation/issues/522>`_)
+* Merge rostest coverage profiles (`#520 <https://github.com/at-wat/neonavigation/issues/520>`_)
+* planner_cspace: fix search range of minimum cost in fast_map_update mode (`#518 <https://github.com/at-wat/neonavigation/issues/518>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.9.1 (2020-07-16)
+------------------
+
+0.9.0 (2020-07-02)
+------------------
+
+0.8.8 (2020-06-15)
+------------------
+* planner_cspace: avoid showing too many warning messages (`#501 <https://github.com/at-wat/neonavigation/issues/501>`_)
+* Contributors: Naotaka Hatao
+
+0.8.7 (2020-05-22)
+------------------
+
+0.8.6 (2020-05-15)
+------------------
+* Fix duplicated tf timestamp (`#494 <https://github.com/at-wat/neonavigation/issues/494>`_)
+* planner_cspace: add wait to navigation tests (`#492 <https://github.com/at-wat/neonavigation/issues/492>`_)
+* planner_cspace: simplify path switch detection condition (`#488 <https://github.com/at-wat/neonavigation/issues/488>`_)
+* planner_cspace: fix uninitialized variable (`#486 <https://github.com/at-wat/neonavigation/issues/486>`_)
+* planner_cspace: enable replan when robot reaches the switchback point (`#449 <https://github.com/at-wat/neonavigation/issues/449>`_)
+* planner_cspace: fix test_debug_outputs initial wait (`#485 <https://github.com/at-wat/neonavigation/issues/485>`_)
+* Contributors: Atsushi Watanabe, Kazuki Takahashi
+
+0.8.5 (2020-05-04)
+------------------
+
+0.8.4 (2020-04-30)
+------------------
+* Clean unused dependencies (`#472 <https://github.com/at-wat/neonavigation/issues/472>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.3 (2020-04-26)
+------------------
+
+0.8.2 (2020-04-07)
+------------------
+* Support Noetic (`#461 <https://github.com/at-wat/neonavigation/issues/461>`_)
+* Contributors: Atsushi Watanabe
+
+0.8.1 (2020-03-12)
+------------------
+* planner_cspace: fix flaky debug_output test (`#452 <https://github.com/at-wat/neonavigation/issues/452>`_)
+* planner_cspace: fix condition of planning finish (`#451 <https://github.com/at-wat/neonavigation/issues/451>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.8.0 (2020-03-04)
+------------------
+* planner_cspace: replan immediately when path is blocked by new obstacles (`#446 <https://github.com/at-wat/neonavigation/issues/446>`_)
+* Add message package version constraints (`#443 <https://github.com/at-wat/neonavigation/issues/443>`_)
+* Contributors: Atsushi Watanabe, Naotaka Hatao
+
+0.7.0 (2020-02-04)
+------------------
+* planner_cspace: add MoveWithToleranceAction server (`#433 <https://github.com/at-wat/neonavigation/issues/433>`_)
+* planner_cspace: fix typo (`#436 <https://github.com/at-wat/neonavigation/issues/436>`_)
+* planner_cspace: implement motion primitive algorithm for speed-up (`#431 <https://github.com/at-wat/neonavigation/issues/431>`_)
+* Contributors: Daiki Maekawa, Naotaka Hatao
+
+0.6.0 (2020-01-18)
+------------------
+
+0.5.1 (2020-01-06)
+------------------
+* planner_cspace: disable blockmem_gridmap_performance test (`#413 <https://github.com/at-wat/neonavigation/issues/413>`_)
+* Fix header namespaces (`#408 <https://github.com/at-wat/neonavigation/issues/408>`_)
+* planner_cspace: fix installing planner_2dof_serial_joints node (`#409 <https://github.com/at-wat/neonavigation/issues/409>`_)
+* Migrate from C math functions to C++ (`#407 <https://github.com/at-wat/neonavigation/issues/407>`_)
+* planner_cspace: split search model definition (`#323 <https://github.com/at-wat/neonavigation/issues/323>`_)
+* planner_cspace: fix debug output test (`#404 <https://github.com/at-wat/neonavigation/issues/404>`_)
+* planner_cspace: fix navigation test stability (`#403 <https://github.com/at-wat/neonavigation/issues/403>`_)
+* planner_cspace: add planner_2dof_serial_joints node test (`#402 <https://github.com/at-wat/neonavigation/issues/402>`_)
+* Contributors: Atsushi Watanabe
+
+0.5.0 (2019-10-21)
+------------------
+* planner_cspace: fix debug output test stability (`#399 <https://github.com/at-wat/neonavigation/issues/399>`_)
+* planner_cspace: publish internally used maps as OccupancyGrid (`#396 <https://github.com/at-wat/neonavigation/issues/396>`_)
+* planner_cspace: clear hysteresis if new obstacle is on the previous path (`#393 <https://github.com/at-wat/neonavigation/issues/393>`_)
+* planner_cspace: fix remember_updates feature (`#391 <https://github.com/at-wat/neonavigation/issues/391>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.3 (2019-09-10)
+------------------
+* planner_cspace: make sure that planner error will be cleared if the goal is aborted (`#372 <https://github.com/at-wat/neonavigation/issues/372>`_)
+* Contributors: Daiki Maekawa
+
+0.4.2 (2019-08-19)
+------------------
+* planner_cspace: fix planner performance (`#369 <https://github.com/at-wat/neonavigation/issues/369>`_)
+* Contributors: Atsushi Watanabe
+
+0.4.1 (2019-08-15)
+------------------
+* planner_cspace: fix debug build compatibility (`#368 <https://github.com/at-wat/neonavigation/issues/368>`_)
+* planner_cspace: fix out-of-boundary validation (`#362 <https://github.com/at-wat/neonavigation/issues/362>`_)
+* planner_cspace: fix incomplete output path after search timeout (`#357 <https://github.com/at-wat/neonavigation/issues/357>`_)
+* planner_cspace: reduce position quantization error on planning (`#351 <https://github.com/at-wat/neonavigation/issues/351>`_)
+* planner_cspace: latch publish data in navigation test (`#353 <https://github.com/at-wat/neonavigation/issues/353>`_)
+* planner_cspace: improve grid search performance (`#342 <https://github.com/at-wat/neonavigation/issues/342>`_)
+* planner_cspace: optimize BlockmemGridmap (`#315 <https://github.com/at-wat/neonavigation/issues/315>`_)
+* planner_cspace: add a launch for planner performance evaluation (`#343 <https://github.com/at-wat/neonavigation/issues/343>`_)
+* planner_cspace: fix parallel memory access (`#306 <https://github.com/at-wat/neonavigation/issues/306>`_)
+* planner_cspace: remove hist mode of debug output (`#336 <https://github.com/at-wat/neonavigation/issues/336>`_)
+* planner_cspace: fix navigation test setup (`#335 <https://github.com/at-wat/neonavigation/issues/335>`_)
+* planner_cspace: add a navigation test case with map update (`#334 <https://github.com/at-wat/neonavigation/issues/334>`_)
+* planner_cspace: add const to the end pos (`#332 <https://github.com/at-wat/neonavigation/issues/332>`_)
+* planner_cspace: reject request if input frame are located at diffrent frame to the map (`#327 <https://github.com/at-wat/neonavigation/issues/327>`_)
+* planner_cspace: publish empty path immediately after planning aborted (`#326 <https://github.com/at-wat/neonavigation/issues/326>`_)
+* planner_cspace: revert default sw_wait parameter (`#313 <https://github.com/at-wat/neonavigation/issues/313>`_)
+* Drop ROS Indigo and Ubuntu Trusty support (`#310 <https://github.com/at-wat/neonavigation/issues/310>`_)
+* planner_cspace: calculate path hysteresis in 3-DOF space (`#304 <https://github.com/at-wat/neonavigation/issues/304>`_)
+* Fix include directory priority (`#308 <https://github.com/at-wat/neonavigation/issues/308>`_)
+* planner_cspace: fix CyclicVector dimension of planner_2dof_serial_joints (`#307 <https://github.com/at-wat/neonavigation/issues/307>`_)
+* planner_cspace, costmap_cspace: minor refactoring (`#305 <https://github.com/at-wat/neonavigation/issues/305>`_)
+* Fix empty path publish (`#301 <https://github.com/at-wat/neonavigation/issues/301>`_)
+* planner_cspace: refactor CyclicVec (`#300 <https://github.com/at-wat/neonavigation/issues/300>`_)
+* planner_cspace: refactor rotation cache (`#299 <https://github.com/at-wat/neonavigation/issues/299>`_)
+* planner_cspace: fix path cost calculation and interpolation (`#298 <https://github.com/at-wat/neonavigation/issues/298>`_)
+* Contributors: Atsushi Watanabe, Daiki Maekawa, Yuta Koga
+
+0.4.0 (2019-05-09)
+------------------
+* planner_cspace: limit negative cost to avoid infinite search loop (`#288 <https://github.com/at-wat/neonavigation/issues/288>`_)
+* trajectory_tracker: remove unused parameters (`#274 <https://github.com/at-wat/neonavigation/issues/274>`_)
+* Support melodic (`#266 <https://github.com/at-wat/neonavigation/issues/266>`_)
+* Contributors: Atsushi Watanabe, Yuta Koga
+
 0.3.1 (2019-01-10)
 ------------------
 * trajectory_tracker: support PathWithVelocity (`#244 <https://github.com/at-wat/neonavigation/issues/244>`_)

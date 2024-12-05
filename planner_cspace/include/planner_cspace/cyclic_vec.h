@@ -10,8 +10,8 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holder nor the names of its 
- *       contributors may be used to endorse or promote products derived from 
+ *     * Neither the name of the copyright holder nor the names of its
+ *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -30,13 +30,13 @@
 #ifndef PLANNER_CSPACE_CYCLIC_VEC_H
 #define PLANNER_CSPACE_CYCLIC_VEC_H
 
-#include <memory>
 #define _USE_MATH_DEFINES
-#include <cmath>
 #include <cfloat>
+#include <cmath>
 #include <initializer_list>
 #include <list>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -44,96 +44,190 @@
 
 #include <planner_cspace/reservable_priority_queue.h>
 
+namespace planner_cspace
+{
+namespace cyclic_vec_type_conversion_rule
+{
+template <typename T>
+void convert(const T val, float& ret)
+{
+  ret = val;
+}
+inline void convert(const int val, float& ret)
+{
+  ret = val;
+}
+inline void convert(const float val, int& ret)
+{
+  ret = std::lround(val);
+}
+
+inline void normalizeFloatAngle(float& val)
+{
+  if (val > M_PI)
+    val -= 2 * M_PI;
+  else if (val < -M_PI)
+    val += 2 * M_PI;
+}
+inline void normalizeFloatAngle(int&)
+{
+}
+}  // namespace cyclic_vec_type_conversion_rule
+
 template <int DIM, int NONCYCLIC, typename T>
 class CyclicVecBase
 {
 protected:
+  static_assert(
+      std::is_same<float, T>() || std::is_same<int, T>(), "T must be float or int");
   T e_[DIM];
 
+  template <typename T2, typename... ArgList>
+  void setElements(const int i, const T2& first, const ArgList&... rest) noexcept
+  {
+    assert(i < DIM);
+
+    cyclic_vec_type_conversion_rule::convert(first, e_[i]);
+    setElements(i + 1, rest...);
+  }
+  void setElements(const int i) noexcept
+  {
+    assert(i == DIM);
+  }
+
+  template <typename... ArgList>
+  void cycleElements(
+      const int i,
+      const int res, const ArgList&... rest)
+  {
+    cycleElement(i, res);
+    cycleElements(i + 1, rest...);
+  }
+  void cycleElement(const int i, const int res)
+  {
+    assert(i < DIM);
+
+    e_[i] = e_[i] % res;
+    if (e_[i] < res / 2 - res)
+      e_[i] += res;
+    else if (e_[i] >= res / 2)
+      e_[i] -= res;
+  }
+  void cycleElements(const int i)
+  {
+    assert(i == DIM);
+  }
+  template <typename... ArgList>
+  void cycleUnsignedElements(
+      const int i,
+      const int res, const ArgList&... rest)
+  {
+    cycleUnsignedElement(i, res);
+    cycleUnsignedElements(i + 1, rest...);
+  }
+  void cycleUnsignedElement(const int i, const int res)
+  {
+    assert(i < DIM);
+
+    e_[i] = e_[i] % res;
+    if (e_[i] < 0)
+      e_[i] += res;
+  }
+  void cycleUnsignedElements(const int i)
+  {
+    assert(i == DIM);
+  }
+
 public:
-  explicit CyclicVecBase(const T* v) noexcept
+  template <typename T2>
+  explicit CyclicVecBase(const CyclicVecBase<DIM, NONCYCLIC, T2>& c) noexcept
   {
     for (int i = 0; i < DIM; i++)
-      e_[i] = v[i];
+      cyclic_vec_type_conversion_rule::convert(c[i], e_[i]);
   }
-  explicit CyclicVecBase(const std::initializer_list<T> vl) noexcept
+  template <typename... ArgList>
+  explicit CyclicVecBase(const float& v, const ArgList&... args) noexcept
   {
-    assert(vl.size() == DIM);
-    auto it = vl.begin();
-    for (int i = 0; i < DIM; ++i, ++it)
-      e_[i] = *it;
+    setElements(0, v, args...);
+  }
+  template <typename... ArgList>
+  explicit CyclicVecBase(const int& v, const ArgList&... args) noexcept
+  {
+    setElements(0, v, args...);
   }
   CyclicVecBase() noexcept
   {
+    for (int i = 0; i < DIM; i++)
+      e_[i] = 0;
   }
-  template <typename C>
-  bool operator==(const C& v) const
+  template <typename T2>
+  bool operator==(const CyclicVecBase<DIM, NONCYCLIC, T2>& v) const
   {
     for (int i = 0; i < DIM; i++)
       if (v.e_[i] != e_[i])
         return false;
     return true;
   }
-  template <typename C>
-  bool operator!=(const C& v) const
+  template <typename T2>
+  bool operator!=(const CyclicVecBase<DIM, NONCYCLIC, T2>& v) const
   {
     return !(*this == v);
   }
-  template <typename C>
-  C operator+(const C& v) const
+  template <typename T2>
+  CyclicVecBase<DIM, NONCYCLIC, T2> operator+(const CyclicVecBase<DIM, NONCYCLIC, T2>& v) const
   {
-    C out(*this);
+    CyclicVecBase<DIM, NONCYCLIC, T2> out(*this);
     for (int i = 0; i < DIM; i++)
     {
       out[i] += v[i];
     }
     return out;
   }
-  template <typename C>
-  C operator-(const C& v) const
+  template <typename T2>
+  CyclicVecBase<DIM, NONCYCLIC, T2> operator-(const CyclicVecBase<DIM, NONCYCLIC, T2>& v) const
   {
-    C out(*this);
+    CyclicVecBase<DIM, NONCYCLIC, T2> out(*this);
     for (int i = 0; i < DIM; i++)
     {
       out[i] -= v[i];
     }
     return out;
   }
-  template <typename C>
-  C operator*(const C& v) const
+  template <typename T2>
+  CyclicVecBase<DIM, NONCYCLIC, T2> operator*(const CyclicVecBase<DIM, NONCYCLIC, T2>& v) const
   {
-    C out;
+    CyclicVecBase<DIM, NONCYCLIC, T2> out;
     for (int i = 0; i < DIM; i++)
     {
       out[i] = e_[i] * v[i];
     }
     return out;
   }
-  template <typename C>
-  int cross2d(const C& a) const
+  float cross2d(const CyclicVecBase<DIM, NONCYCLIC, T>& a) const
   {
     return (*this)[0] * a[1] - (*this)[1] * a[0];
   }
-  template <typename C>
-  int dot2d(const C& a) const
+  float dot2d(const CyclicVecBase<DIM, NONCYCLIC, T>& a) const
   {
     return (*this)[0] * a[0] + (*this)[1] * a[1];
   }
-  template <typename C>
-  float distLine2d(const C& a, const C& b) const
+  float distLine2d(
+      const CyclicVecBase<DIM, NONCYCLIC, T>& a,
+      const CyclicVecBase<DIM, NONCYCLIC, T>& b) const
   {
     return (b - a).cross2d((*this) - a) / (b - a).len();
   }
-  template <typename C>
-  float distLinestrip2d(const C& a, const C& b) const
+  float distLinestrip2d(
+      const CyclicVecBase<DIM, NONCYCLIC, T>& a,
+      const CyclicVecBase<DIM, NONCYCLIC, T>& b) const
   {
-    auto to_a = (*this) - a;
+    const auto to_a = (*this) - a;
     if ((b - a).dot2d(to_a) <= 0)
       return to_a.len();
-    auto to_b = (*this) - b;
+    const auto to_b = (*this) - b;
     if ((a - b).dot2d(to_b) <= 0)
       return to_b.len();
-    return fabs(distLine2d(a, b));
+    return std::abs(distLine2d(a, b));
   }
   T& operator[](const int& x)
   {
@@ -142,13 +236,6 @@ public:
   const T& operator[](const int& x) const
   {
     return e_[x];
-  }
-  void set(const T* init)
-  {
-    for (int i = 0; i < DIM; i++)
-    {
-      e_[i] = init[i];
-    }
   }
   T sqlen() const
   {
@@ -161,7 +248,7 @@ public:
   }
   float len() const
   {
-    return sqrtf(sqlen());
+    return std::sqrt(sqlen());
   }
   float gridToLenFactor() const
   {
@@ -173,25 +260,51 @@ public:
     float out = 0;
     for (int i = 0; i < DIM; i++)
     {
-      out += powf(e_[i], 2.0);
+      out += std::pow(e_[i], 2);
     }
-    return sqrtf(out);
+    return std::sqrt(out);
+  }
+
+  void rotate(const float ang)
+  {
+    const auto tmp = *this;
+    const float cos_v = cosf(ang);
+    const float sin_v = sinf(ang);
+
+    cyclic_vec_type_conversion_rule::convert(cos_v * tmp[0] - sin_v * tmp[1], e_[0]);
+    cyclic_vec_type_conversion_rule::convert(sin_v * tmp[0] + cos_v * tmp[1], e_[1]);
+    this->e_[2] = tmp[2] + ang;
+    cyclic_vec_type_conversion_rule::normalizeFloatAngle(this->e_[2]);
   }
 
   // Cyclic operations
-  void cycle(int& v, const int c)
+  template <typename... ArgList>
+  void cycle(const int res, const ArgList&... rest)
   {
-    v = v % c;
-    if (v < 0)
-      v += c;
-    if (v > c / 2)
-      v -= c;
+    static_assert(
+        std::is_same<int, T>(), "cycle is provided only for int");
+    cycleElements(NONCYCLIC, res, rest...);
   }
-  void cycleUnsigned(int& v, const int c)
+  template <typename... ArgList>
+  void cycleUnsigned(const int res, const ArgList&... rest)
   {
-    v = v % c;
-    if (v < 0)
-      v += c;
+    static_assert(
+        std::is_same<int, T>(), "cycle is provided only for int");
+    cycleUnsignedElements(NONCYCLIC, res, rest...);
+  }
+  void cycle(const CyclicVecBase<DIM, NONCYCLIC, T>& res)
+  {
+    static_assert(
+        std::is_same<int, T>(), "cycle is provided only for int");
+    for (int i = NONCYCLIC; i < DIM; ++i)
+      cycleElement(i, res[i]);
+  }
+  void cycleUnsigned(const CyclicVecBase<DIM, NONCYCLIC, T>& res)
+  {
+    static_assert(
+        std::is_same<int, T>(), "cycle is provided only for int");
+    for (int i = NONCYCLIC; i < DIM; ++i)
+      cycleUnsignedElement(i, res[i]);
   }
 
   // Hash
@@ -206,64 +319,25 @@ public:
     }
     return hash;
   }
-};
 
-template <int DIM, int NONCYCLIC>
-class CyclicVecInt : public CyclicVecBase<DIM, NONCYCLIC, int>
-{
-public:
-  using CyclicVecBase<DIM, NONCYCLIC, int>::CyclicVecBase;
-
-public:
-  CyclicVecInt() noexcept
+  bool isExceeded(const CyclicVecBase<DIM, NONCYCLIC, int>& v) const
   {
-  }
-  explicit CyclicVecInt(const float* v) noexcept
-  {
-    for (int i = 0; i < DIM; i++)
-      this->e_[i] = lroundf(v[i]);
-  }
-  explicit CyclicVecInt(const CyclicVecBase<DIM, NONCYCLIC, int>& c) noexcept
-  {
-    for (int i = 0; i < DIM; i++)
-      this->e_[i] = c[i];
+    static_assert(
+        std::is_same<int, T>(), "isExceeded is provided only for T=int");
+    for (int i = 0; i < NONCYCLIC; ++i)
+    {
+      if (static_cast<unsigned int>((*this)[i]) >= static_cast<unsigned int>(v[i]))
+        return true;
+    }
+    return false;
   }
 };
 
 template <int DIM, int NONCYCLIC>
-class CyclicVecFloat : public CyclicVecBase<DIM, NONCYCLIC, float>
-{
-public:
-  using CyclicVecBase<DIM, NONCYCLIC, float>::CyclicVecBase;
+using CyclicVecInt = CyclicVecBase<DIM, NONCYCLIC, int>;
+template <int DIM, int NONCYCLIC>
+using CyclicVecFloat = CyclicVecBase<DIM, NONCYCLIC, float>;
 
-public:
-  CyclicVecFloat() noexcept
-  {
-  }
-  explicit CyclicVecFloat(const CyclicVecBase<DIM, NONCYCLIC, float>& c) noexcept
-  {
-    for (int i = 0; i < DIM; i++)
-      this->e_[i] = c[i];
-  }
-  explicit CyclicVecFloat(const CyclicVecBase<DIM, NONCYCLIC, int>& c) noexcept
-  {
-    for (int i = 0; i < DIM; i++)
-      this->e_[i] = c[i];
-  }
-  void rotate(const float ang)
-  {
-    const auto tmp = *this;
-    const float cos_v = cosf(ang);
-    const float sin_v = sinf(ang);
-
-    this->e_[0] = cos_v * tmp[0] - sin_v * tmp[1];
-    this->e_[1] = sin_v * tmp[0] + cos_v * tmp[1];
-    this->e_[2] = tmp[2] + ang;
-    if (this->e_[2] > M_PI)
-      this->e_[2] -= 2 * M_PI;
-    else if (this->e_[2] < -M_PI)
-      this->e_[2] += 2 * M_PI;
-  }
-};
+}  // namespace planner_cspace
 
 #endif  // PLANNER_CSPACE_CYCLIC_VEC_H
