@@ -272,6 +272,8 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
       return;
     }
   }
+  received_path_.header = msg.header;
+  path_.toMsg(received_path_);
 }
 
 bool TrackerNode::isControlNeeded() const
@@ -748,8 +750,6 @@ void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<A
         return;
       }
       cbPath(action_server->get_current_goal()->path);
-      received_path_.header = path_header_;
-      path_.toMsg(received_path_);
     }
     rclcpp::Rate rate(action_server_process_rate_sec_);
     while (rclcpp::ok())
