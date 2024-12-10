@@ -256,11 +256,11 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
     MSG_TYPE new_path_msg;
     new_path_msg.header = msg.header;
     new_path_msg.poses.push_back(msg.poses.back());
-    path_.fromMsg(new_path_msg, epsilon_);
+    path_.fromMsgWithIndices(new_path_msg, epsilon_, path_to_msg_indices_);
   }
   else
   {
-    path_.fromMsg(msg, epsilon_);
+    path_.fromMsgWithIndices(msg, epsilon_, path_to_msg_indices_);
     is_robot_rotating_on_last_ = false;
   }
   for (const auto& path_pose : path_)
@@ -368,7 +368,7 @@ void TrackerNode::cbTimer()
     status.distance_remains = 0.0;
     status.angle_remains = 0.0;
     status.path_header = path_header_;
-    status.nearest_pose_index = 0;
+    status.last_passed_index = 0;
     status.distance_to_path = 0.0;
     status.status = trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::NO_PATH;
     pub_status_->publish(status);
@@ -392,7 +392,7 @@ void TrackerNode::cbOdomTimeout()
   status.distance_remains = 0.0;
   status.angle_remains = 0.0;
   status.path_header = path_header_;
-  status.nearest_pose_index = 0;
+  status.last_passed_index = 0;
   status.distance_to_path = 0.0;
   status.status = trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::NO_PATH;
   pub_status_->publish(status);
@@ -504,7 +504,21 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
   status.status = tracking_result.status;
   status.distance_remains = tracking_result.distance_remains;
   status.angle_remains = tracking_result.angle_remains;
-  status.nearest_pose_index = tracking_result.path_step_done;
+  if (path_to_msg_indices_.empty())
+  {
+    status.last_passed_index = 0;
+  }
+  else
+  {
+    if (tracking_result.path_step_done < path_to_msg_indices_.size())
+    {
+      status.last_passed_index = path_to_msg_indices_[tracking_result.path_step_done];
+    }
+    else
+    {
+      status.last_passed_index = path_to_msg_indices_.back();
+    }
+  }
   status.distance_to_path = tracking_result.distance_from_target;
   pub_status_->publish(status);
   latest_status_ = status;
@@ -711,7 +725,7 @@ void TrackerNode::resetLatestStatus()
   latest_status_.distance_remains = 0.0;
   latest_status_.angle_remains = 0.0;
   latest_status_.path_header = std_msgs::msg::Header();
-  latest_status_.nearest_pose_index = 0;
+  latest_status_.last_passed_index = 0;
   latest_status_.distance_to_path = 0.0;
 }
 
@@ -775,6 +789,19 @@ void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<A
   }
 }
 
+void TrackerNode::setFeedback(Action::Feedback& feedback)
+{
+  feedback.distance_to_goal = latest_status_.distance_remains;
+  feedback.speed = v_lim_.get();
+}
+
+void TrackerNode::setFeedback(ActionWithVelocity::Feedback& feedback)
+{
+  feedback.distance_to_goal = latest_status_.distance_remains;
+  feedback.speed = v_lim_.get();
+  feedback.last_passed_index = latest_status_.last_passed_index;
+}
+
 template <typename ActionClass>
 bool TrackerNode::spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server)
 {
@@ -820,10 +847,9 @@ bool TrackerNode::spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionSe
   RCLCPP_DEBUG(get_logger(),
                "Feedback Status: %s, remaining distance: %0.3f, angle: %0.3f, index: %d, dist_to_path: %0.3f",
                to_string(latest_status_).c_str(), latest_status_.distance_remains, latest_status_.angle_remains,
-               latest_status_.nearest_pose_index, latest_status_.distance_to_path);
+               latest_status_.last_passed_index, latest_status_.distance_to_path);
   auto feedback = std::make_shared<typename ActionClass::Feedback>();
-  feedback->distance_to_goal = latest_status_.distance_remains;
-  feedback->speed = v_lim_.get();
+  setFeedback(*feedback);
   action_server->publish_feedback(feedback);
 
   nav_msgs::msg::Path remaining_path;

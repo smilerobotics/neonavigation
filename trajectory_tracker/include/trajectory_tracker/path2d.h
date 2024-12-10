@@ -287,14 +287,23 @@ public:
   template <typename PATH_TYPE>
   inline void fromMsg(const PATH_TYPE& path, const double in_place_turn_eps = 1.0e-6)
   {
+    std::vector<size_t> dummy_indices;
+    fromMsgWithIndices(path, in_place_turn_eps, dummy_indices);
+  }
+  template <typename PATH_TYPE>
+  inline void fromMsgWithIndices(const PATH_TYPE& path, const double in_place_turn_eps,
+                                 std::vector<size_t>& path_to_msg_indices)
+  {
     clear();
+    path_to_msg_indices.clear();
     bool in_place_turning = false;
     trajectory_tracker::Pose2D in_place_turn_end;
-    for (const auto& pose : path.poses)
+    for (size_t i = 0; i < path.poses.size(); ++i)
     {
-      const trajectory_tracker::Pose2D next(pose);
+      const trajectory_tracker::Pose2D next(path.poses[i]);
       if (empty())
       {
+        path_to_msg_indices.push_back(0);
         push_back(next);
         continue;
       }
@@ -302,9 +311,11 @@ public:
       {
         if (in_place_turning)
         {
+          path_to_msg_indices.push_back(i - 1);
           push_back(in_place_turn_end);
           in_place_turning = false;
         }
+        path_to_msg_indices.push_back(i);
         push_back(next);
       }
       else
@@ -315,6 +326,7 @@ public:
     }
     if (in_place_turning)
     {
+      path_to_msg_indices.push_back(path.poses.size() - 1);
       push_back(in_place_turn_end);
     }
   }
