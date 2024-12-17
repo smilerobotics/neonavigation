@@ -135,6 +135,7 @@ private:
   double odom_timeout_sec_;
 
   trajectory_tracker::Path2D path_;
+  std::vector<size_t> path_to_msg_indices_;
   std_msgs::msg::Header path_header_;
   bool is_path_updated_;
 
@@ -202,13 +203,14 @@ private:
   bool isControlNeeded() const;
   template <typename ActionClass>
   void computeControl(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
+  void setFeedback(Action::Feedback& feedback);
+  void setFeedback(ActionWithVelocity::Feedback& feedback);
   template <typename ActionClass>
   bool spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
   void computeControlNormal();
   void computeControlWithVelocity();
   void publishZeroVelocity();
   void resetLatestStatus();
-
   template <typename MSG_TYPE>
   bool shouldKeepRotation(const MSG_TYPE& msg) const;
 };
