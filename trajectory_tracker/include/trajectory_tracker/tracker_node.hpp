@@ -215,8 +215,8 @@ private:
   void resetLatestStatus();
   template <typename MSG_TYPE>
   bool shouldKeepRotation(const MSG_TYPE& msg) const;
-  void publishReceivedPath(const nav_msgs::msg::Path& path);
-  void publishReceivedPath(const trajectory_tracker_msgs::msg::PathWithVelocity& path);
+  void publishTrackingPath(const nav_msgs::msg::Path& path);
+  void publishTrackingPath(const trajectory_tracker_msgs::msg::PathWithVelocity& path);
   void publishRemainingPath();
 };
 
