@@ -41,6 +41,7 @@
  */
 
 #include <algorithm>
+#include <condition_variable>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -139,7 +140,9 @@ void TrackerNode::initialize()
   declare_dynamic_parameter("tracking_search_range", &tracking_search_range_, 1.0);
   declare_dynamic_parameter("initial_tracking_search_range", &initial_tracking_search_range_, 0.0);
   declare_dynamic_parameter("keep_last_rotation", &keep_last_rotation_, false);
-  declare_dynamic_parameter("action_server_process_rate_sec", &action_server_process_rate_sec_, 10.0);
+  double action_server_wait_duration_sec = 0.1;
+  declare_dynamic_parameter("action_server_wait_duration_sec", &action_server_wait_duration_sec, action_server_wait_duration_sec);
+  action_server_wait_duration_ = std::chrono::duration<double>(action_server_wait_duration_sec);
   is_robot_rotating_on_last_ = false;
 
   onDynamicParameterUpdated({});
@@ -164,7 +167,9 @@ void TrackerNode::initialize()
   {
     sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
         "odom", 10, std::bind(&TrackerNode::cbOdometry, this, std::placeholders::_1));
-    pub_received_path_ = create_publisher<nav_msgs::msg::Path>("received_global_plan", 1);
+    pub_remaining_path_ = create_publisher<nav_msgs::msg::Path>("received_global_plan", 1);
+    pub_tracking_path_ =
+        create_publisher<nav_msgs::msg::Path>("tracking_path", rclcpp::QoS(1).transient_local().reliable());
   }
   else
   {
@@ -231,9 +236,33 @@ bool TrackerNode::shouldKeepRotation(const MSG_TYPE& msg) const
     {
       return true;
     }
-    RCLCPP_INFO(get_logger(), "Goal updated. yaw_diff %0.3f, dist_diff %0.3f", yaw_diff, dist_diff);
+    RCLCPP_DEBUG(get_logger(), "Goal updated. yaw_diff %0.3f, dist_diff %0.3f", yaw_diff, dist_diff);
   }
   return false;
+}
+
+void TrackerNode::publishReceivedPath(const nav_msgs::msg::Path& path)
+{
+  received_path_ = path;
+  if (pub_tracking_path_)
+  {
+    pub_tracking_path_->publish(received_path_);
+  }
+}
+
+void TrackerNode::publishReceivedPath(const trajectory_tracker_msgs::msg::PathWithVelocity& path_with_velocity)
+{
+  nav_msgs::msg::Path path;
+  path.header = path_with_velocity.header;
+  path.poses.reserve(path_with_velocity.poses.size());
+  for (const auto& pose_with_velocity : path_with_velocity.poses)
+  {
+    geometry_msgs::msg::PoseStamped pose;
+    pose.header = path_with_velocity.header;
+    pose.pose = pose_with_velocity.pose;
+    path.poses.emplace_back(pose);
+  }
+  publishReceivedPath(path);
 }
 
 template <typename MSG_TYPE>
@@ -246,8 +275,8 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
   if (msg.poses.size() > 0)
   {
     const geometry_msgs::msg::Pose& last_pose = msg.poses.back().pose;
-    RCLCPP_INFO(get_logger(), "Goal Pose: (%f, %f), yaw: %f", last_pose.position.x, last_pose.position.y,
-                tf2::getYaw(last_pose.orientation));
+    RCLCPP_DEBUG(get_logger(), "Goal Pose: (%f, %f), yaw: %f", last_pose.position.x, last_pose.position.y,
+                 tf2::getYaw(last_pose.orientation));
   }
 
   if (shouldKeepRotation(msg))
@@ -272,8 +301,7 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
       return;
     }
   }
-  received_path_.header = msg.header;
-  path_.toMsg(received_path_);
+  publishReceivedPath(msg);
 }
 
 bool TrackerNode::isControlNeeded() const
@@ -400,6 +428,7 @@ void TrackerNode::cbOdomTimeout()
   // One shot timer
   odom_timeout_timer_->cancel();
   odom_timeout_timer_.reset();
+  action_server_feedback_cv_.notify_all();
 }
 
 void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, const Eigen::Vector3d& prediction_offset,
@@ -432,6 +461,10 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
       pub_vel_->publish(cmd_vel);
       break;
     }
+    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::GOAL:
+    {
+      is_robot_rotating_on_last_ = false;
+    }
     default:
     {
       if (tracking_result.turning_in_place)
@@ -454,7 +487,7 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
                      w_lim_.get());
         if (keep_last_rotation_ && (tracking_result.distance_remains == 0.0))
         {
-          RCLCPP_INFO(get_logger(), "Robot is rotating on last pose");
+          RCLCPP_DEBUG(get_logger(), "Robot is rotating on last pose");
           is_robot_rotating_on_last_ = true;
         }
       }
@@ -522,6 +555,7 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
   status.distance_to_path = tracking_result.distance_from_target;
   pub_status_->publish(status);
   latest_status_ = status;
+  action_server_feedback_cv_.notify_all();
 }
 
 TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf2::Transform>& robot_to_odom,
@@ -749,43 +783,41 @@ static std::string to_string(const trajectory_tracker_msgs::msg::TrajectoryTrack
 template <typename ActionClass>
 void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server)
 {
-  RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
-  is_robot_rotating_on_last_ = false;
-  unable_to_follow_path_count_ = 0;
-  try
+  if (action_server == nullptr)
   {
-    {
-      std::lock_guard<std::mutex> lock(action_server_mutex_);
-      resetLatestStatus();
-      if (action_server->get_current_goal()->path.poses.size() <= 1)
-      {
-        RCLCPP_WARN(get_logger(), "Too short path is given. Stopping the robot.");
-        action_server->succeeded_current();
-        return;
-      }
-      cbPath(action_server->get_current_goal()->path);
-    }
-    rclcpp::Rate rate(action_server_process_rate_sec_);
-    while (rclcpp::ok())
-    {
-      {
-        std::unique_lock<std::mutex> lock(action_server_mutex_);
-        if (spinActionServerOnce(action_server))
-        {
-          publishZeroVelocity();
-          cbPath(nav_msgs::msg::Path());
-          break;
-        }
-      }
-      rate.sleep();
-    }
+    RCLCPP_ERROR(get_logger(), "Action server is not initialized.");
+    return;
   }
-  catch (std::exception& e)
+  RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
   {
-    RCLCPP_ERROR(this->get_logger(), "%s", e.what());
-    action_server->terminate_all();
-    publishZeroVelocity();
-    cbPath(nav_msgs::msg::Path());
+    std::lock_guard<std::mutex> lock(action_server_mutex_);
+    resetLatestStatus();
+    if (action_server->get_current_goal()->path.poses.size() <= 1)
+    {
+      RCLCPP_WARN(get_logger(), "Too short path is given. Stopping the robot.");
+      publishZeroVelocity();
+      action_server->succeeded_current();
+      return;
+    }
+    cbPath(action_server->get_current_goal()->path);
+  }
+
+  const bool goal_reached = spinActionServer(action_server);
+  std::lock_guard<std::mutex> lock(action_server_mutex_);
+  publishZeroVelocity();
+  if (goal_reached)
+  {
+    // Reached the goal
+    RCLCPP_INFO(get_logger(), "Reached the goal!");
+    action_server->succeeded_current();
+  }
+  else
+  {
+    // Failed to reach the goal
+    if (action_server->is_server_active())
+    {
+      action_server->terminate_all();
+    }
   }
 }
 
@@ -802,59 +834,11 @@ void TrackerNode::setFeedback(ActionWithVelocity::Feedback& feedback)
   feedback.last_passed_index = latest_status_.last_passed_index;
 }
 
-template <typename ActionClass>
-bool TrackerNode::spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server)
+void TrackerNode::publishRemainingPath()
 {
-  if (action_server == nullptr || !action_server->is_server_active())
-  {
-    RCLCPP_DEBUG(get_logger(), "Action server unavailable or inactive. Stopping.");
-    return true;
-  }
-  if (action_server->is_cancel_requested())
-  {
-    RCLCPP_INFO(get_logger(), "Goal was canceled. Stopping the robot.");
-    action_server->terminate_all();
-    return true;
-  }
-  if (action_server->is_preempt_requested())
-  {
-    RCLCPP_INFO(get_logger(), "Passing new path to controller.");
-    auto goal = action_server->accept_pending_goal();
-    cbPath(goal->path);
-    return false;
-  }
-  switch (latest_status_.status)
-  {
-    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::NO_PATH:
-    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FAR_FROM_PATH:
-      ++unable_to_follow_path_count_;
-      if (unable_to_follow_path_count_ >= unable_to_follow_path_threshold_)
-      {
-        RCLCPP_WARN(get_logger(), "Unable to follow path. Stopping the robot.");
-        action_server->terminate_all();
-        return true;
-      }
-      break;
-    case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::GOAL:
-      RCLCPP_DEBUG(get_logger(), "Reached the goal!");
-      action_server->succeeded_current();
-      return true;
-    default:
-      unable_to_follow_path_count_ = 0;
-      break;
-  }
-
-  RCLCPP_DEBUG(get_logger(),
-               "Feedback Status: %s, remaining distance: %0.3f, angle: %0.3f, index: %d, dist_to_path: %0.3f",
-               to_string(latest_status_).c_str(), latest_status_.distance_remains, latest_status_.angle_remains,
-               latest_status_.last_passed_index, latest_status_.distance_to_path);
-  auto feedback = std::make_shared<typename ActionClass::Feedback>();
-  setFeedback(*feedback);
-  action_server->publish_feedback(feedback);
-
   nav_msgs::msg::Path remaining_path;
   remaining_path.header = path_header_;
-  if ((path_step_done_ >= 0) && (path_step_done_ < received_path_.poses.size()))
+  if ((latest_status_.last_passed_index >= 0) && (latest_status_.last_passed_index < received_path_.poses.size()))
   {
     for (size_t i = path_step_done_ + 1; i < received_path_.poses.size(); ++i)
     {
@@ -865,12 +849,82 @@ bool TrackerNode::spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionSe
     {
       remaining_path.poses.push_back(received_path_.poses.back());
     }
+    pub_remaining_path_->publish(remaining_path);
   }
   else
   {
-    RCLCPP_WARN(get_logger(), "Invalid path_step_done_ value: %ld", path_step_done_);
+    RCLCPP_WARN(get_logger(), "Invalid last_passed index value: %d, path size: %lu", latest_status_.last_passed_index, received_path_.poses.size());
   }
-  pub_received_path_->publish(remaining_path);
+}
+
+template <typename ActionClass>
+bool TrackerNode::spinActionServer(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server)
+{
+  try
+  {
+    int unable_to_follow_path_count = 0;
+    int last_path_step_done = -1;
+    rclcpp::Time previout_remaining_path_publish_time = now();
+    while (rclcpp::ok())
+    {
+      std::unique_lock<std::mutex> lock(action_server_mutex_);
+      if (!action_server->is_server_active())
+      {
+        RCLCPP_WARN(get_logger(), "Action server unavailable or inactive. Stopping.");
+        return false;
+      }
+      if (action_server->is_cancel_requested())
+      {
+        RCLCPP_INFO(get_logger(), "Goal was canceled. Stopping the robot.");
+        return false;
+      }
+      if (action_server->is_preempt_requested())
+      {
+        RCLCPP_DEBUG(get_logger(), "Passing new path to controller.");
+        auto goal = action_server->accept_pending_goal();
+        cbPath(goal->path);
+        last_path_step_done = -1;
+      }
+      action_server_feedback_cv_.wait_for(lock, action_server_wait_duration_);
+      if (!rclcpp::ok())
+      {
+        return false;
+      }
+      switch (latest_status_.status)
+      {
+        case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::NO_PATH:
+        case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FAR_FROM_PATH:
+          ++unable_to_follow_path_count;
+          break;
+        case trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::GOAL:
+          return true;
+        default:
+          unable_to_follow_path_count = 0;
+          break;
+      }
+      if (unable_to_follow_path_count >= unable_to_follow_path_threshold_)
+      {
+        RCLCPP_WARN(get_logger(), "Unable to follow path. Stopping the robot.");
+        return false;
+      }
+      RCLCPP_DEBUG(get_logger(),
+                   "Feedback Status: %s, remaining distance: %0.3f, angle: %0.3f, index: %d, dist_to_path: %0.3f",
+                   to_string(latest_status_).c_str(), latest_status_.distance_remains, latest_status_.angle_remains,
+                   latest_status_.last_passed_index, latest_status_.distance_to_path);
+      auto feedback = std::make_shared<typename ActionClass::Feedback>();
+      setFeedback(*feedback);
+      action_server->publish_feedback(feedback);
+      if (last_path_step_done != path_step_done_)
+      {
+        publishRemainingPath();
+        last_path_step_done = path_step_done_;
+      }
+    }
+  }
+  catch (std::exception& e)
+  {
+    RCLCPP_ERROR(this->get_logger(), "Exception in action server: %s", e.what());
+  }
   return false;
 }
 
