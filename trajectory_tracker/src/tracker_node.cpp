@@ -407,7 +407,7 @@ void TrackerNode::cbTimer()
 
 void TrackerNode::cbOdomTimeout()
 {
-  std::lock_guard<std::mutex> lock(action_server_mutex_);
+  const std::lock_guard<std::mutex> lock(action_server_mutex_);
   RCLCPP_WARN_STREAM(get_logger(), "Odometry timeout. Last odometry stamp: " << prev_odom_stamp_.seconds());
   v_lim_.clear();
   w_lim_.clear();
@@ -435,7 +435,7 @@ void TrackerNode::cbOdomTimeout()
 void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, const Eigen::Vector3d& prediction_offset,
                           const double odom_linear_vel, const double odom_angular_vel, const double dt)
 {
-  std::lock_guard<std::mutex> lock(action_server_mutex_);
+  const std::lock_guard<std::mutex> lock(action_server_mutex_);
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus status;
   status.header.stamp = now();
   status.path_header = path_header_;
@@ -791,7 +791,7 @@ void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<A
   }
   RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
   {
-    std::lock_guard<std::mutex> lock(action_server_mutex_);
+    const std::lock_guard<std::mutex> lock(action_server_mutex_);
     resetLatestStatus();
     if (action_server->get_current_goal()->path.poses.size() <= 1)
     {
@@ -804,7 +804,7 @@ void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<A
   }
 
   const bool goal_reached = spinActionServer(action_server);
-  std::lock_guard<std::mutex> lock(action_server_mutex_);
+  const std::lock_guard<std::mutex> lock(action_server_mutex_);
   publishZeroVelocity();
   if (goal_reached)
   {
@@ -924,7 +924,7 @@ bool TrackerNode::spinActionServer(const std::shared_ptr<nav2_util::SimpleAction
       }
     }
   }
-  catch (std::exception& e)
+  catch (const std::exception& e)
   {
     RCLCPP_ERROR(this->get_logger(), "Exception in action server: %s", e.what());
   }
