@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <condition_variable>
 #include <limits>
 #include <string>
 #include <variant>
@@ -118,7 +119,8 @@ private:
   double tracking_search_range_;
   bool keep_last_rotation_;
   bool is_robot_rotating_on_last_;
-  double action_server_process_rate_sec_;
+  std::chrono::duration<double> action_server_wait_duration_;
+  std::condition_variable action_server_feedback_cv_;
 
   rclcpp::SubscriptionBase::SharedPtr sub_path_;
   rclcpp::SubscriptionBase::SharedPtr sub_path_velocity_;
@@ -127,7 +129,8 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_vel_;
   rclcpp::Publisher<trajectory_tracker_msgs::msg::TrajectoryTrackerStatus>::SharedPtr pub_status_;
   rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr pub_tracking_;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_received_path_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_remaining_path_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_tracking_path_;
   tf2_ros::Buffer tfbuf_;
   tf2_ros::TransformListener tfl_;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -152,7 +155,6 @@ private:
   trajectory_tracker_msgs::msg::TrajectoryTrackerStatus latest_status_;
   nav_msgs::msg::Path received_path_;
   int64_t unable_to_follow_path_threshold_;
-  int unable_to_follow_path_count_;
 
   struct TrackingResult
   {
@@ -206,13 +208,16 @@ private:
   void setFeedback(Action::Feedback& feedback);
   void setFeedback(ActionWithVelocity::Feedback& feedback);
   template <typename ActionClass>
-  bool spinActionServerOnce(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
+  bool spinActionServer(std::shared_ptr<nav2_util::SimpleActionServer<ActionClass>> action_server);
   void computeControlNormal();
   void computeControlWithVelocity();
   void publishZeroVelocity();
   void resetLatestStatus();
   template <typename MSG_TYPE>
   bool shouldKeepRotation(const MSG_TYPE& msg) const;
+  void publishTrackingPath(const nav_msgs::msg::Path& path);
+  void publishTrackingPath(const trajectory_tracker_msgs::msg::PathWithVelocity& path);
+  void publishRemainingPath();
 };
 
 }  // namespace trajectory_tracker
