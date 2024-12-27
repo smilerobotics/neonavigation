@@ -829,9 +829,8 @@ void TrackerNode::setFeedback(Action::Feedback& feedback)
 
 void TrackerNode::setFeedback(ActionWithVelocity::Feedback& feedback)
 {
-  feedback.distance_to_goal = latest_status_.distance_remains;
   feedback.speed = v_lim_.get();
-  feedback.last_passed_index = latest_status_.last_passed_index;
+  feedback.status = latest_status_;
 }
 
 void TrackerNode::publishRemainingPath()
