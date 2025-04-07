@@ -752,6 +752,8 @@ void TrackerNode::publishZeroVelocity()
   cmd_vel.linear.x = 0;
   cmd_vel.angular.z = 0;
   pub_vel_->publish(cmd_vel);
+  v_lim_.clear();
+  w_lim_.clear();
 }
 
 void TrackerNode::resetLatestStatus()
@@ -789,8 +791,6 @@ void TrackerNode::computeControl(std::shared_ptr<nav2_util::SimpleActionServer<A
     RCLCPP_ERROR(get_logger(), "Action server is not initialized.");
     return;
   }
-  v_lim_.clear();
-  w_lim_.clear();
   RCLCPP_INFO(get_logger(), "Received a goal, begin computing control effort.");
   {
     const std::lock_guard<std::mutex> lock(action_server_mutex_);
