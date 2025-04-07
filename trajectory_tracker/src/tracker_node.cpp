@@ -752,6 +752,8 @@ void TrackerNode::publishZeroVelocity()
   cmd_vel.linear.x = 0;
   cmd_vel.angular.z = 0;
   pub_vel_->publish(cmd_vel);
+  v_lim_.clear();
+  w_lim_.clear();
 }
 
 void TrackerNode::resetLatestStatus()
