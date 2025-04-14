@@ -664,14 +664,15 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
                i_nearest, i_local_goal, path_step_done_, lpath.size(), distance_remains, remain_local);
 
   bool arrive_local_goal(false);
-  bool in_place_turning = (vec[1] == 0.0 && vec[0] == 0.0);
+  const bool in_place_turning_at_last = (vec[1] == 0.0 && vec[0] == 0.0);
+  const bool in_place_turning_on_the_way = (std::abs(angle_remains) > stop_tolerance_ang_) && (v_lim_.get() == 0.0);
 
   TrackingResult result(trajectory_tracker_msgs::msg::TrajectoryTrackerStatus::FOLLOWING);
 
   // Stop and rotate
   const bool large_angle_error = std::abs(rotate_ang_) < M_PI && std::cos(rotate_ang_) > std::cos(angle_remains);
   if (large_angle_error || std::abs(remain_local) < stop_tolerance_dist_ || path_length < min_track_path_ ||
-      in_place_turning)
+      in_place_turning_at_last || in_place_turning_on_the_way)
   {
     if (large_angle_error)
     {
@@ -680,13 +681,13 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
                             angle_remains);
     }
 
-    if (path_length < min_track_path_ || std::abs(remain_local) < stop_tolerance_dist_ || in_place_turning)
+    if (path_length < min_track_path_ || std::abs(remain_local) < stop_tolerance_dist_ || in_place_turning_at_last)
     {
       angle_remains = trajectory_tracker::angleNormalized(-(it_local_goal - 1)->yaw_);
       if (it_local_goal != lpath.end())
         arrive_local_goal = true;
     }
-    if (path_length < stop_tolerance_dist_ || in_place_turning)
+    if (path_length < stop_tolerance_dist_ || in_place_turning_at_last)
       distance_remains = distance_remains_raw = 0.0;
 
     result.turning_in_place = true;
