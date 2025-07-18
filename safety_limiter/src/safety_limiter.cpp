@@ -840,6 +840,7 @@ protected:
     stat.add("Pointcloud Availability", has_cloud_ ? "true" : "false");
     stat.add("Watchdog Timeout", watchdog_stop_ ? "true" : "false");
 
+    status_msg.header.stamp = now();
     status_msg.limit_ratio = r_lim_;
     status_msg.is_cloud_available = has_cloud_;
     status_msg.has_watchdog_timed_out = watchdog_stop_;
