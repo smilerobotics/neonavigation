@@ -527,6 +527,10 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
         v_lim_.clear();
         w_lim_.clear();
       }
+      if (!allow_backward_ && v_lim_.get() < 0)
+      {
+        v_lim_.clear();
+      }
       geometry_msgs::msg::Twist cmd_vel;
       cmd_vel.linear.x = v_lim_.get();
       cmd_vel.angular.z = w_lim_.get();
@@ -681,7 +685,8 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
                             angle_remains);
     }
 
-    if (path_length < min_track_path_ || std::abs(remain_local) < stop_tolerance_dist_ || in_place_turning_at_last)
+    if (path_length < min_track_path_ || std::abs(remain_local) < stop_tolerance_dist_ || in_place_turning_at_last ||
+        (!allow_backward_ && remain_local < -epsilon_ && it_local_goal != lpath.end()))
     {
       angle_remains = trajectory_tracker::angleNormalized(-(it_local_goal - 1)->yaw_);
       if (it_local_goal != lpath.end())
@@ -699,12 +704,9 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
   else
   {
     // Too far from given path
-    float dist_from_path = dist_err;
-    if (i_nearest == 0)
-      dist_from_path = -(lpath[i_nearest].pos_ - origin).norm();
-    else if (i_nearest + 1 >= static_cast<int>(path_.size()))
-      dist_from_path = -(lpath[i_nearest].pos_ - origin).norm();
-    if (std::abs(dist_from_path) > d_stop_)
+    const float dist_from_path =
+        trajectory_tracker::lineStripDistance(lpath[i_nearest_prev].pos_, lpath[i_nearest].pos_, origin);
+    if (dist_from_path > d_stop_)
     {
       result.distance_remains = distance_remains;
       result.distance_remains_raw = distance_remains_raw;
@@ -714,23 +716,47 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
       return result;
     }
 
-    // Path following control
-    result.turning_in_place = false;
-    result.target_linear_vel = linear_vel;
-    result.distance_remains = distance_remains;
-    result.distance_remains_raw = distance_remains_raw;
-    result.angle_remains = angle_remains;
-    result.angle_remains_raw = angle_remains + yaw_raw;
-    result.distance_from_target = trajectory_tracker::clip(dist_err, d_lim_);
-    result.signed_local_distance = -remain_local * sign_vel;
-    result.tracking_point_curv = curv;
-    result.tracking_point_x = pos_on_line[0];
-    result.tracking_point_y = pos_on_line[1];
+    if (!allow_backward_ && remain_local < -epsilon_ && it_local_goal != lpath.end())
+    {
+      // Robot has overshot the local goal and cannot go backward.
+      // Treat as arriving at the local goal to proceed to the next path segment.
+      angle_remains = trajectory_tracker::angleNormalized(-(it_local_goal - 1)->yaw_);
+      arrive_local_goal = true;
+
+      result.turning_in_place = true;
+      result.target_linear_vel = linear_vel;
+      result.distance_remains = distance_remains;
+      result.distance_remains_raw = distance_remains_raw;
+      result.angle_remains = angle_remains;
+    }
+    else
+    {
+      // Path following control
+      result.turning_in_place = false;
+      result.target_linear_vel = linear_vel;
+      result.distance_remains = distance_remains;
+      result.distance_remains_raw = distance_remains_raw;
+      result.angle_remains = angle_remains;
+      result.angle_remains_raw = angle_remains + yaw_raw;
+      result.distance_from_target = trajectory_tracker::clip(dist_err, d_lim_);
+      result.signed_local_distance = -remain_local * sign_vel;
+      result.tracking_point_curv = curv;
+      result.tracking_point_x = pos_on_line[0];
+      result.tracking_point_y = pos_on_line[1];
+    }
   }
 
-  if (std::abs(result.distance_remains) < goal_tolerance_dist_ &&
+  // When allow_backward is false and the robot has overshot the final goal,
+  // it cannot back up to reduce distance_remains. Use a wider tolerance
+  // (d_stop_) so the overshoot is accepted as GOAL instead of getting stuck
+  // in FOLLOWING.
+  const double effective_goal_tolerance_dist =
+      (!allow_backward_ && result.distance_remains < 0)
+          ? std::max(d_stop_, goal_tolerance_dist_)
+          : goal_tolerance_dist_;
+  if (std::abs(result.distance_remains) < effective_goal_tolerance_dist &&
       std::abs(result.angle_remains) < goal_tolerance_ang_ &&
-      std::abs(result.distance_remains_raw) < goal_tolerance_dist_ &&
+      std::abs(result.distance_remains_raw) < effective_goal_tolerance_dist &&
       std::abs(result.angle_remains_raw) < goal_tolerance_ang_ &&
       (goal_tolerance_lin_vel_ == 0.0 || std::abs(odom_linear_vel) < goal_tolerance_lin_vel_) &&
       (goal_tolerance_ang_vel_ == 0.0 || std::abs(odom_angular_vel) < goal_tolerance_ang_vel_) &&
