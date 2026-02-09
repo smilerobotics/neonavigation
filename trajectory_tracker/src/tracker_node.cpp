@@ -529,6 +529,7 @@ void TrackerNode::control(const tf2::Stamped<tf2::Transform>& robot_to_odom, con
       }
       if (!allow_backward_ && v_lim_.get() < 0)
       {
+        // Set the target linear velocity to zero if going backward is not allowed.
         v_lim_.clear();
       }
       geometry_msgs::msg::Twist cmd_vel;
@@ -724,7 +725,7 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
       arrive_local_goal = true;
 
       result.turning_in_place = true;
-      result.target_linear_vel = linear_vel;
+      result.target_linear_vel = 0.0;
       result.distance_remains = distance_remains;
       result.distance_remains_raw = distance_remains_raw;
       result.angle_remains = angle_remains;
@@ -751,9 +752,9 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
   // (d_stop_) so the overshoot is accepted as GOAL instead of getting stuck
   // in FOLLOWING.
   const double effective_goal_tolerance_dist =
-      (!allow_backward_ && result.distance_remains < 0)
-          ? std::max(d_stop_, goal_tolerance_dist_)
-          : goal_tolerance_dist_;
+      (!allow_backward_ && result.distance_remains < 0) ?
+          std::max(d_stop_, goal_tolerance_dist_) :
+          goal_tolerance_dist_;
   if (std::abs(result.distance_remains) < effective_goal_tolerance_dist &&
       std::abs(result.angle_remains) < goal_tolerance_ang_ &&
       std::abs(result.distance_remains_raw) < effective_goal_tolerance_dist &&
