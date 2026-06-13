@@ -269,6 +269,26 @@ void TrackerNode::publishTrackingPath(const trajectory_tracker_msgs::msg::PathWi
 template <typename MSG_TYPE>
 void TrackerNode::cbPath(const MSG_TYPE& msg)
 {
+  // Preserve tracking progress across re-publications of the same path. Upstream
+  // may re-send the path every control cycle (e.g. a partial-path action re-ticked
+  // by a reactive behavior tree). Resetting path_step_done_ to 0 on every message
+  // then prevents the robot from advancing past an in-place turn at the path start:
+  // the turn cannot translate the robot, so the nearest point stays at the start
+  // and each reset undoes the commitment that would carry it past the turn -- it
+  // stays FOLLOWING at zero velocity (the gazebo playback freeze). Keep the
+  // previous progress index, but only when the new path still passes through the
+  // committed point (a re-publication/continuation); a genuinely new route does
+  // not, and resets to 0. The index is kept as-is rather than re-located to the
+  // nearest point, because near an in-place turn the path points are clustered and
+  // the nearest match could fall before the turn, losing the commitment.
+  const int64_t prev_path_step_done = path_step_done_;
+  const bool had_committed_progress =
+      (prev_path_step_done > 0 && prev_path_step_done < static_cast<int64_t>(path_.size()));
+  Eigen::Vector2d committed_position;
+  if (had_committed_progress)
+  {
+    committed_position = path_[prev_path_step_done].pos_;
+  }
   path_header_ = msg.header;
   is_path_updated_ = true;
   path_step_done_ = 0;
@@ -300,6 +320,16 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000, "path_velocity.velocity.x must be positive");
       path_.clear();
       return;
+    }
+  }
+  if (had_committed_progress && prev_path_step_done < static_cast<int64_t>(path_.size()))
+  {
+    // Keep the commitment only if the new path still passes near the committed
+    // point (continuation). A new route leaves it far away and stays reset.
+    constexpr double continuation_tolerance = 0.1;
+    if ((path_[prev_path_step_done].pos_ - committed_position).norm() < continuation_tolerance)
+    {
+      path_step_done_ = prev_path_step_done;
     }
   }
   publishTrackingPath(msg);
