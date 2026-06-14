@@ -739,6 +739,20 @@ TrackerNode::TrackingResult TrackerNode::getTrackingResult(const tf2::Stamped<tf
         trajectory_tracker::lineStripDistance(lpath[i_nearest_prev].pos_, lpath[i_nearest].pos_, origin);
     if (dist_from_path > d_stop_)
     {
+      // MODE2-FAR-DIAG (V3-7165, DO-NOT-MERGE): capture why the robot is declared FAR_FROM_PATH near
+      // the route terminal (no obstacle case). dist_from_path is the lateral deviation from the
+      // current path segment; d_stop is the (tight, 0.1 m) tolerance. Also surface where on the path
+      // and the local curvature to tell whether the terminal path geometry is the trigger.
+      {
+        rclcpp::Clock diag_clock(RCL_ROS_TIME);
+        RCLCPP_WARN_THROTTLE(
+            get_logger(), diag_clock, 500,
+            "MODE2-FAR-DIAG: FAR_FROM_PATH dist_from_path=%0.4f d_stop=%0.4f distance_remains=%0.4f "
+            "i_nearest=%ld i_local_goal=%ld path_size=%lu path_length=%0.4f curv=%0.4f "
+            "robot=(%0.3f,%0.3f)",
+            dist_from_path, d_stop_, distance_remains, i_nearest, i_local_goal, lpath.size(),
+            path_length, curv, origin[0], origin[1]);
+      }
       result.distance_remains = distance_remains;
       result.distance_remains_raw = distance_remains_raw;
       result.angle_remains = angle_remains;
