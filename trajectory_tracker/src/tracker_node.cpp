@@ -286,9 +286,13 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
   // (see getTrackingResult(): the tracked path is built by taking every
   // path_step_-th point of path_), so step s corresponds to path_[s * path_step_].
   const int64_t prev_path_step_done = path_step_done_;
+  // path_step_ is a runtime parameter; guard against a non-positive value so the
+  // progress-preservation math below never divides by zero or indexes with a
+  // negative offset. A non-positive path_step simply falls back to resetting.
   const int64_t prev_committed_index = prev_path_step_done * path_step_;
   const bool had_committed_progress =
-      (prev_path_step_done > 0 && prev_committed_index < static_cast<int64_t>(path_.size()));
+      (path_step_ > 0 && prev_path_step_done > 0 &&
+       prev_committed_index < static_cast<int64_t>(path_.size()));
   Eigen::Vector2d committed_position;
   if (had_committed_progress)
   {
