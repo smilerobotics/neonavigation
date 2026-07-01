@@ -275,19 +275,24 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
   // then prevents the robot from advancing past an in-place turn at the path start:
   // the turn cannot translate the robot, so the nearest point stays at the start
   // and each reset undoes the commitment that would carry it past the turn -- it
-  // stays FOLLOWING at zero velocity (the gazebo playback freeze). Keep the
-  // previous progress index, but only when the new path still passes through the
-  // committed point (a re-publication/continuation); a genuinely new route does
-  // not, and resets to 0. The index is kept as-is rather than re-located to the
-  // nearest point, because near an in-place turn the path points are clustered and
-  // the nearest match could fall before the turn, losing the commitment.
+  // stays FOLLOWING at zero velocity. Keep the previous progress index, but only
+  // when the new path still passes through the committed point (a
+  // re-publication/continuation); a genuinely new route does not, and resets to 0.
+  // The index is kept as-is rather than re-located to the nearest point, because
+  // near an in-place turn the path points are clustered and the nearest match
+  // could fall before the turn, losing the commitment.
+  //
+  // path_step_done_ is a step index into the sub-sampled path used for control
+  // (see getTrackingResult(): the tracked path is built by taking every
+  // path_step_-th point of path_), so step s corresponds to path_[s * path_step_].
   const int64_t prev_path_step_done = path_step_done_;
+  const int64_t prev_committed_index = prev_path_step_done * path_step_;
   const bool had_committed_progress =
-      (prev_path_step_done > 0 && prev_path_step_done < static_cast<int64_t>(path_.size()));
+      (prev_path_step_done > 0 && prev_committed_index < static_cast<int64_t>(path_.size()));
   Eigen::Vector2d committed_position;
   if (had_committed_progress)
   {
-    committed_position = path_[prev_path_step_done].pos_;
+    committed_position = path_[prev_committed_index].pos_;
   }
   path_header_ = msg.header;
   is_path_updated_ = true;
@@ -322,14 +327,20 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
       return;
     }
   }
-  if (had_committed_progress && prev_path_step_done < static_cast<int64_t>(path_.size()))
+  if (had_committed_progress && !path_.empty())
   {
+    // Clamp the restored step to the new path length: when the re-published path
+    // is shorter, the previous step may point past its end. The last valid step
+    // is the largest s with s * path_step_ <= path_.size() - 1.
+    const int64_t max_step = (static_cast<int64_t>(path_.size()) - 1) / path_step_;
+    const int64_t restored_step = std::min(prev_path_step_done, max_step);
+    const int64_t restored_index = restored_step * path_step_;
     // Keep the commitment only if the new path still passes near the committed
     // point (continuation). A new route leaves it far away and stays reset.
     constexpr double continuation_tolerance = 0.1;
-    if ((path_[prev_path_step_done].pos_ - committed_position).norm() < continuation_tolerance)
+    if ((path_[restored_index].pos_ - committed_position).norm() < continuation_tolerance)
     {
-      path_step_done_ = prev_path_step_done;
+      path_step_done_ = restored_step;
     }
   }
   publishTrackingPath(msg);
