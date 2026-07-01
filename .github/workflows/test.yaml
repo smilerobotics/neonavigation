@@ -21,6 +21,7 @@ jobs:
       ROS_DISTRO: ${{ matrix.ROS_DISTRO }}
       ROS_REPO: main
       UPSTREAM_WORKSPACE: .github/upstream.repos
+      ROSDEP_SKIP_KEYS: ament_auto_cmake
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,3 +32,4 @@ jobs:
           ROS_DISTRO: ${{ matrix.ROS_DISTRO }}
           ROS_REPO: main
           UPSTREAM_WORKSPACE: .github/upstream.repos
+          ROSDEP_SKIP_KEYS: ament_auto_cmake
