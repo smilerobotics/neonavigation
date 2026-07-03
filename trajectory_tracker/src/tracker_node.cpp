@@ -84,6 +84,7 @@ TrackerNode::TrackerNode(const std::string& name, const rclcpp::NodeOptions& opt
   , tfbuf_(get_clock())
   , tfl_(tfbuf_)
   , is_path_updated_(false)
+  , path_step_done_(0)
 {
 }
 
@@ -269,6 +270,35 @@ void TrackerNode::publishTrackingPath(const trajectory_tracker_msgs::msg::PathWi
 template <typename MSG_TYPE>
 void TrackerNode::cbPath(const MSG_TYPE& msg)
 {
+  // Preserve tracking progress across re-publications of the same path. Upstream
+  // may re-send the path every control cycle (e.g. a partial-path action re-ticked
+  // by a reactive behavior tree). Resetting path_step_done_ to 0 on every message
+  // then prevents the robot from advancing past an in-place turn at the path start:
+  // the turn cannot translate the robot, so the nearest point stays at the start
+  // and each reset undoes the commitment that would carry it past the turn -- it
+  // stays FOLLOWING at zero velocity. Keep the previous progress index, but only
+  // when the new path still passes through the committed point (a
+  // re-publication/continuation); a genuinely new route does not, and resets to 0.
+  // The index is kept as-is rather than re-located to the nearest point, because
+  // near an in-place turn the path points are clustered and the nearest match
+  // could fall before the turn, losing the commitment.
+  //
+  // path_step_done_ is a step index into the sub-sampled path used for control
+  // (see getTrackingResult(): the tracked path is built by taking every
+  // path_step_-th point of path_), so step s corresponds to path_[s * path_step_].
+  const int64_t prev_path_step_done = path_step_done_;
+  // path_step_ is a runtime parameter; guard against a non-positive value so the
+  // progress-preservation math below never divides by zero or indexes with a
+  // negative offset. A non-positive path_step simply falls back to resetting.
+  const int64_t prev_committed_index = prev_path_step_done * path_step_;
+  const bool had_committed_progress =
+      (path_step_ > 0 && prev_path_step_done > 0 &&
+       prev_committed_index < static_cast<int64_t>(path_.size()));
+  Eigen::Vector2d committed_position;
+  if (had_committed_progress)
+  {
+    committed_position = path_[prev_committed_index].pos_;
+  }
   path_header_ = msg.header;
   is_path_updated_ = true;
   path_step_done_ = 0;
@@ -300,6 +330,30 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
       RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 1000, "path_velocity.velocity.x must be positive");
       path_.clear();
       return;
+    }
+  }
+  if (had_committed_progress && !path_.empty())
+  {
+    // Clamp the restored step to the new path length: when the re-published path
+    // is shorter, the previous step may point past its end. The last valid step
+    // is the largest s with s * path_step_ <= path_.size() - 1.
+    const int64_t max_step = (static_cast<int64_t>(path_.size()) - 1) / path_step_;
+    const int64_t restored_step = std::min(prev_path_step_done, max_step);
+    const int64_t restored_index = restored_step * path_step_;
+    // Keep the commitment only if the new path still passes near the committed
+    // point (continuation). A new route leaves it far away and stays reset.
+    // Preserve progress only when the point at the same index in the re-published
+    // path is essentially unchanged. 0.1 m is the same scale as the node's
+    // stop_tolerance_dist_ default ("close enough to be the same place") and sits
+    // between the 1e-6 identical-point epsilon and the 1.0 m tracking_search_range_:
+    // loose enough for the small pose jitter of a re-published path, tight enough
+    // that a genuinely different route (points are ~0.3 m apart at the recorder's
+    // default spacing) is unlikely to match at the same index. Assumes roughly
+    // consistent point spacing between re-publications.
+    constexpr double continuation_tolerance = 0.1;  // [m]
+    if ((path_[restored_index].pos_ - committed_position).norm() < continuation_tolerance)
+    {
+      path_step_done_ = restored_step;
     }
   }
   publishTrackingPath(msg);
