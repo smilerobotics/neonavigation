@@ -1,0 +1,5 @@
+repositories:
+  neonavigation_msgs:
+    type: git
+    url: https://github.com/smilerobotics/neonavigation_msgs.git
+    version: fix/action-msgs-depend
