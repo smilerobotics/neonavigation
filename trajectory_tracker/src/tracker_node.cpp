@@ -84,6 +84,7 @@ TrackerNode::TrackerNode(const std::string& name, const rclcpp::NodeOptions& opt
   , tfbuf_(get_clock())
   , tfl_(tfbuf_)
   , is_path_updated_(false)
+  , path_step_done_(0)
 {
 }
 
