@@ -342,7 +342,15 @@ void TrackerNode::cbPath(const MSG_TYPE& msg)
     const int64_t restored_index = restored_step * path_step_;
     // Keep the commitment only if the new path still passes near the committed
     // point (continuation). A new route leaves it far away and stays reset.
-    constexpr double continuation_tolerance = 0.1;
+    // Preserve progress only when the point at the same index in the re-published
+    // path is essentially unchanged. 0.1 m is the same scale as the node's
+    // stop_tolerance_dist_ default ("close enough to be the same place") and sits
+    // between the 1e-6 identical-point epsilon and the 1.0 m tracking_search_range_:
+    // loose enough for the small pose jitter of a re-published path, tight enough
+    // that a genuinely different route (points are ~0.3 m apart at the recorder's
+    // default spacing) is unlikely to match at the same index. Assumes roughly
+    // consistent point spacing between re-publications.
+    constexpr double continuation_tolerance = 0.1;  // [m]
     if ((path_[restored_index].pos_ - committed_position).norm() < continuation_tolerance)
     {
       path_step_done_ = restored_step;
