@@ -10,6 +10,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
@@ -33,3 +37,23 @@ jobs:
           ROS_REPO: main
           UPSTREAM_WORKSPACE: .github/upstream.repos
           ROSDEP_SKIP_KEYS: ament_auto_cmake
+
+      - name: Post failing job log to PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run_id = context.runId;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { owner, repo, run_id });
+            const self = process.env.GITHUB_JOB;
+            let job = jobs.find(j => j.conclusion === 'failure');
+            if (!job) job = jobs.find(j => j.status !== 'completed') || jobs[0];
+            const res = await github.rest.actions.downloadJobLogsForWorkflowRun({ owner, repo, job_id: job.id });
+            let log = Buffer.isBuffer(res.data) ? res.data.toString('utf8') : String(res.data);
+            const MAX = 60000;
+            if (log.length > MAX) log = '...(truncated to last ' + MAX + ' chars)...\n' + log.slice(-MAX);
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: context.issue.number,
+              body: '### industrial_ci failing log (job ' + job.id + ')\n<details><summary>log tail</summary>\n\n```\n' + log + '\n```\n</details>'
+            });
