@@ -105,6 +105,12 @@ public:
     return false;
   }
 
+  // Pure virtual in RateBase since Jazzy; a plain virtual on Humble.
+  virtual rcl_clock_type_t get_type() const
+  {
+    return clock_->get_clock_type();
+  }
+
   virtual void reset()
   {
     last_interval_ = clock_->now();
